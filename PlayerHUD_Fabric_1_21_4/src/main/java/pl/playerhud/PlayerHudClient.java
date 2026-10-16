@@ -8,8 +8,10 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.ingame.InventoryScreen;
 import net.minecraft.client.option.KeyBinding;
+import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.hit.HitResult;
 import org.joml.Quaternionf;
@@ -54,7 +56,7 @@ public class PlayerHudClient implements ClientModInitializer {
         int currentX = HudConfig.hudX;
         int currentY = HudConfig.hudY;
 
-        // 1. Rendering postaci 3D gracza (To działa już bezbłędnie na 1.21.4!)
+        // 1. Rendering postaci 3D gracza (Zgodny z Minecraft 1.21.4)
         if (HudConfig.showSkin) {
             Quaternionf rotation = new Quaternionf().rotationXYZ(0.0F, 0.0F, 3.1415927F);
             Quaternionf cameraOrientation = new Quaternionf().rotationXYZ(0.0F, 0.0F, 0.0F);
@@ -72,25 +74,55 @@ public class PlayerHudClient implements ClientModInitializer {
             currentX += 50;
         }
 
-        // 2. Wyświetlanie Zdrowia i Absorpcji w postaci czytelnego licznika tekstowego
+        // 2. Rendering zdrowia w rządkach po max 10 oryginalnych serduszek z Minecrafta
         if (HudConfig.showHearts) {
-            int currentHp = (int) target.getHealth();
-            int maxHp = (int) target.getMaxHealth();
-            int abs = (int) target.getAbsorptionAmount();
+            float hp = target.getHealth();
+            float absorption = target.getAbsorptionAmount();
+            int index = 0;
 
-            // Rysowanie tekstu życia
-            context.drawText(client.textRenderer, "Zdrowie: §c❤ " + currentHp + "§7/§c" + maxHp, currentX, currentY + 5, 0xFFFFFF, true);
-            
-            // Rysowanie tekstu absorpcji (jeśli gracz ją ma, np. po zjedzeniu koxa)
-            if (abs > 0) {
-                context.drawText(client.textRenderer, "Absorpcja: §e💛 " + abs, currentX, currentY + 15, 0xFFFFFF, true);
+            // Rysowanie czerwonych serduszek (Wersja 1.21.4 wymaga RenderLayer::getGuiTextured)
+            for (int i = 0; i < hp; i += 2) {
+                int row = index / 10;
+                int col = index % 10;
+                int heartX = currentX + col * 9;
+                int heartY = currentY + row * 10;
+
+                context.drawGuiTexture(RenderLayer::getGuiTextured, Identifier.ofVanilla("hud/heart/container"), heartX, heartY, 9, 9);
+                if (hp - i >= 2) {
+                    context.drawGuiTexture(RenderLayer::getGuiTextured, Identifier.ofVanilla("hud/heart/full"), heartX, heartY, 9, 9);
+                } else {
+                    context.drawGuiTexture(RenderLayer::getGuiTextured, Identifier.ofVanilla("hud/heart/half"), heartX, heartY, 9, 9);
+                }
+                index++;
+            }
+
+            // Rysowanie złotych serduszek absorpcji
+            if (absorption > 0) {
+                for (int i = 0; i < absorption; i += 2) {
+                    int row = index / 10;
+                    int col = index % 10;
+                    int heartX = currentX + col * 9;
+                    int heartY = currentY + row * 10;
+
+                    context.drawGuiTexture(RenderLayer::getGuiTextured, Identifier.ofVanilla("hud/heart/container"), heartX, heartY, 9, 9);
+                    if (absorption - i >= 2) {
+                        context.drawGuiTexture(RenderLayer::getGuiTextured, Identifier.ofVanilla("hud/heart/absorbing_full"), heartX, heartY, 9, 9);
+                    } else {
+                        context.drawGuiTexture(RenderLayer::getGuiTextured, Identifier.ofVanilla("hud/heart/absorbing_half"), heartX, heartY, 9, 9);
+                    }
+                    index++;
+                }
             }
         }
 
         // 3. Punkty zbroi pancerza przeciwnika
         if (HudConfig.showArmor) {
             int armorPoints = target.getArmor();
-            int textY = currentY + ((target.getAbsorptionAmount() > 0) ? 25 : 15);
+            int totalHearts = (int) Math.ceil((target.getHealth() + target.getAbsorptionAmount()) / 2.0);
+            int rows = (int) Math.ceil(totalHearts / 10.0);
+            if (rows < 1) rows = 1;
+            int textY = currentY + (rows * 10) + 2;
+            
             context.drawText(client.textRenderer, "Pancerz: §b🛡 " + armorPoints, currentX, textY, 0xFFFFFF, true);
         }
     }
