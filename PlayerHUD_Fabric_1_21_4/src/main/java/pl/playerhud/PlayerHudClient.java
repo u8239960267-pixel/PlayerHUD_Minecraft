@@ -4,22 +4,28 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.ingame.InventoryScreen;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.util.InputUtil;
+import net.minecraft.entity.EntityPose;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.Identifier;
-import net.minecraft.util.hit.EntityHitResult;
-import net.minecraft.util.hit.HitResult;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 import org.lwjgl.glfw.GLFW;
+import java.util.UUID;
 
 public class PlayerHudClient implements ClientModInitializer {
     public static KeyBinding openSettingsKey;
+    
+    // System śledzenia zaatakowanego celu (Combat Tracker)
+    public static UUID targetPlayerUuid = null;
+    public static long lastAttackTime = 0;
+    private static final long HUD_DURATION_MS = 15000; // 15 sekund
 
     @Override
     public void onInitializeClient() {
@@ -34,18 +40,31 @@ public class PlayerHudClient implements ClientModInitializer {
             while (openSettingsKey.wasPressed()) {
                 client.setScreen(new HudSettingsScreen());
             }
+            
+            // Ukrywanie HUDu po 15 sekundach bez zadania obrażeń
+            if (targetPlayerUuid != null && (System.currentTimeMillis() - lastAttackTime > HUD_DURATION_MS)) {
+                targetPlayerUuid = null;
+            }
         });
+
+        // Czyszczenie celu przy zmianie serwera / wyjściu z gry
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> targetPlayerUuid = null);
 
         HudRenderCallback.EVENT.register((drawContext, tickCounter) -> {
             MinecraftClient client = MinecraftClient.getInstance();
-            if (client.player == null || client.world == null || client.currentScreen != null) return;
+            if (client.player == null || client.world == null || client.currentScreen != null || targetPlayerUuid == null) return;
 
-            HitResult hitResult = client.crosshairTarget;
-            if (hitResult != null && hitResult.getType() == HitResult.Type.ENTITY) {
-                EntityHitResult entityHit = (EntityHitResult) hitResult;
-                if (entityHit.getEntity() instanceof PlayerEntity targetPlayer) {
-                    renderTargetStats(drawContext, client, targetPlayer);
+            // Szukanie zapamiętanego gracza w świecie gry
+            PlayerEntity targetPlayer = null;
+            for (PlayerEntity p : client.world.getPlayers()) {
+                if (p.getUuid().equals(targetPlayerUuid)) {
+                    targetPlayer = p;
+                    break;
                 }
+            }
+
+            if (targetPlayer != null && !targetPlayer.isRemoved()) {
+                renderTargetStats(drawContext, client, targetPlayer);
             }
         });
     }
@@ -55,37 +74,79 @@ public class PlayerHudClient implements ClientModInitializer {
 
         int currentX = HudConfig.hudX;
         int currentY = HudConfig.hudY;
+        int startX = currentX;
 
-        // 1. Rendering postaci 3D gracza (Zgodny z Minecraft 1.21.4)
+        // 1. Rendering postaci 3D (Zablokowana rotacja i pozycja stojąca)
         if (HudConfig.showSkin) {
-            Quaternionf rotation = new Quaternionf().rotationXYZ(0.0F, 0.0F, 3.1415927F);
+            // Wymuszenie stałego gapienia się wprost na kamerę (0.0F obrotu głowy i ciała)
+            float savedYaw = target.bodyYaw;
+            float savedHeadYaw = target.headYaw;
+            float savedPitch = target.getPitch();
+            EntityPose savedPose = target.getPose();
+
+            target.bodyYaw = 0.0F;
+            target.headYaw = 0.0F;
+            target.setPitch(0.0F);
+            target.setPose(EntityPose.STANDING); // Zmuszenie modelu do stania (ignoruje leżenie/pływanie)
+
+            Quaternionf rotation = new Quaternionf().rotationXYZ(0.0F, 3.1415927F, 3.1415927F);
             Quaternionf cameraOrientation = new Quaternionf().rotationXYZ(0.0F, 0.0F, 0.0F);
             
             InventoryScreen.drawEntity(
                     context, 
-                    (float)(currentX + 20), 
-                    (float)(currentY + 70), 
+                    (float)(currentX + 25), 
+                    (float)(currentY + 75), 
                     30.0F, 
                     new Vector3f(0.0F, 0.0F, 0.0F), 
                     rotation, 
                     cameraOrientation, 
                     target
             );
-            currentX += 50;
+
+            // Przywrócenie oryginalnego stanu gracza dla silnika gry
+            target.bodyYaw = savedYaw;
+            target.headYaw = savedHeadYaw;
+            target.setPitch(savedPitch);
+            target.setPose(savedPose);
+
+            currentX += 60;
         }
 
-        // 2. Rendering zdrowia w rządkach po max 10 oryginalnych serduszek z Minecrafta
+        int statsY = currentY + 5;
+
+        // 2. Rendering Nicku nad paskami statystyk (Ukryty z tradycyjnej pozycji)
+        if (HudConfig.showName) {
+            context.drawText(client.textRenderer, "§6§l" + target.getName().getString(), currentX, statsY, 0xFFFFFF, true);
+            statsY += 12;
+        }
+
+        // 3. Graficzny Minecraftowy Armor HUD (Nad sercami)
+        if (HudConfig.showArmor) {
+            int armorPoints = target.getArmor();
+            for (int i = 0; i < 10; i++) {
+                int armorX = currentX + i * 8;
+                context.drawGuiTexture(RenderLayer::getGuiTextured, Identifier.ofVanilla("hud/armor/empty"), armorX, statsY, 9, 9);
+                if (armorPoints - (i * 2) >= 2) {
+                    context.drawGuiTexture(RenderLayer::getGuiTextured, Identifier.ofVanilla("hud/armor/full"), armorX, statsY, 9, 9);
+                } else if (armorPoints - (i * 2) > 0) {
+                    context.drawGuiTexture(RenderLayer::getGuiTextured, Identifier.ofVanilla("hud/armor/half"), armorX, statsY, 9, 9);
+                }
+            }
+            statsY += 10;
+        }
+
+        // 4. Rendering Serduszek i Absorpcji (Max 10 w rządku)
         if (HudConfig.showHearts) {
             float hp = target.getHealth();
             float absorption = target.getAbsorptionAmount();
             int index = 0;
 
-            // Rysowanie czerwonych serduszek (Wersja 1.21.4 wymaga RenderLayer::getGuiTextured)
+            // Serca podstawowe
             for (int i = 0; i < hp; i += 2) {
                 int row = index / 10;
                 int col = index % 10;
                 int heartX = currentX + col * 9;
-                int heartY = currentY + row * 10;
+                int heartY = statsY + row * 10;
 
                 context.drawGuiTexture(RenderLayer::getGuiTextured, Identifier.ofVanilla("hud/heart/container"), heartX, heartY, 9, 9);
                 if (hp - i >= 2) {
@@ -96,13 +157,13 @@ public class PlayerHudClient implements ClientModInitializer {
                 index++;
             }
 
-            // Rysowanie złotych serduszek absorpcji
+            // Serca absorpcji
             if (absorption > 0) {
                 for (int i = 0; i < absorption; i += 2) {
                     int row = index / 10;
                     int col = index % 10;
                     int heartX = currentX + col * 9;
-                    int heartY = currentY + row * 10;
+                    int heartY = statsY + row * 10;
 
                     context.drawGuiTexture(RenderLayer::getGuiTextured, Identifier.ofVanilla("hud/heart/container"), heartX, heartY, 9, 9);
                     if (absorption - i >= 2) {
@@ -113,17 +174,6 @@ public class PlayerHudClient implements ClientModInitializer {
                     index++;
                 }
             }
-        }
-
-        // 3. Punkty zbroi pancerza przeciwnika
-        if (HudConfig.showArmor) {
-            int armorPoints = target.getArmor();
-            int totalHearts = (int) Math.ceil((target.getHealth() + target.getAbsorptionAmount()) / 2.0);
-            int rows = (int) Math.ceil(totalHearts / 10.0);
-            if (rows < 1) rows = 1;
-            int textY = currentY + (rows * 10) + 2;
-            
-            context.drawText(client.textRenderer, "Pancerz: §b🛡 " + armorPoints, currentX, textY, 0xFFFFFF, true);
         }
     }
 }
