@@ -10,7 +10,6 @@ public class HudSettingsScreen extends Screen {
     private boolean isDragging = false;
     private int dragStartX = 0;
     private int dragStartY = 0;
-    private int activeTab = 0;
 
     public HudSettingsScreen() {
         super(Text.of("Ustawienia Player HUD"));
@@ -20,83 +19,82 @@ public class HudSettingsScreen extends Screen {
     protected void init() {
         this.clearChildren();
 
-        // Obliczanie pozycji, aby wyśrodkować menu i opcje
+        // Obliczanie pozycji dla wyśrodkowania elementów
         int centerX = this.width / 2;
         int buttonWidth = 200;
         int buttonX = centerX - (buttonWidth / 2);
+        
+        // Startowa pozycja Y dla pierwszego elementu menu
+        int currentY = 40; 
+        int spacing = 24; // Odstęp między przyciskami
 
-        // Wyśrodkowane zakładki bez numeracji z ikonami tekstowymi
-        int tabWidth = 85;
-        int totalTabsWidth = 4 * tabWidth + 3 * 5; // 4 zakładki po 85px + 3 przerwy po 5px = 355px
-        int tabStartX = centerX - (totalTabsWidth / 2);
+        // Tytuł menu na środku
+        // (Rysowany automatycznie lub przez textRenderer w metodzie render)
 
-        this.addDrawableChild(ButtonWidget.builder(Text.of("⚙ OGÓLNE"), b -> switchTab(0)).dimensions(tabStartX, 10, tabWidth, 20).build());
-        this.addDrawableChild(ButtonWidget.builder(Text.of("👤 MODEL 3D"), b -> switchTab(1)).dimensions(tabStartX + 90, 10, tabWidth, 20).build());
-        this.addDrawableChild(ButtonWidget.builder(Text.of("❤️ STATY"), b -> switchTab(2)).dimensions(tabStartX + 180, 10, tabWidth, 20).build());
-        this.addDrawableChild(ButtonWidget.builder(Text.of("📛 NICKI"), b -> switchTab(3)).dimensions(tabStartX + 270, 10, tabWidth, 20).build());
+        // 1. Włącznik całego HUDa
+        this.addDrawableChild(ButtonWidget.builder(Text.of("Cały HUD: " + (HudConfig.isEnabled ? "§aWŁĄCZONY" : "§cWYŁĄCZONY")), button -> {
+            HudConfig.isEnabled = !HudConfig.isEnabled;
+            button.setMessage(Text.of("Cały HUD: " + (HudConfig.isEnabled ? "§aWŁĄCZONY" : "§cWYŁĄCZONY")));
+        }).dimensions(buttonX, currentY, buttonWidth, 20).build());
+        
+        currentY += spacing;
 
-        // Zakładka 0: OGÓLNE
-        if (activeTab == 0) {
-            // Włącznik HUDa
-            this.addDrawableChild(ButtonWidget.builder(Text.of("Cały HUD: " + (HudConfig.isEnabled ? "§aWŁĄCZONY" : "§cWYŁĄCZONY")), button -> {
-                HudConfig.isEnabled = !HudConfig.isEnabled;
-                button.setMessage(Text.of("Cały HUD: " + (HudConfig.isEnabled ? "§aWŁĄCZONY" : "§cWYŁĄCZONY")));
-            }).dimensions(buttonX, 50, buttonWidth, 20).build());
+        // 2. Suwak skali (Zakres od 0.5x do 2.0x)
+        this.addDrawableChild(new SliderWidget(buttonX, currentY, buttonWidth, 20, 
+            Text.of(String.format("Skala HUD: %.1fx", HudConfig.hudScale)), (HudConfig.hudScale - 0.5f) / 1.5f) {
+            
+            @Override
+            protected void updateMessage() {
+                this.setMessage(Text.of(String.format("Skala HUD: %.1fx", HudConfig.hudScale)));
+            }
 
-            // NOWOŚĆ: Suwak skali (Zakres od 0.5x do 2.0x)
-            this.addDrawableChild(new SliderWidget(buttonX, 80, buttonWidth, 20, 
-                Text.of(String.format("Skala HUD: %.1fx", HudConfig.hudScale)), (HudConfig.hudScale - 0.5f) / 1.5f) {
-                
-                @Override
-                protected void updateMessage() {
-                    this.setMessage(Text.of(String.format("Skala HUD: %.1fx", HudConfig.hudScale)));
-                }
+            @Override
+            protected void applyValue() {
+                float rawScale = 0.5f + (float) this.value * 1.5f;
+                HudConfig.hudScale = Math.round(rawScale * 10.0f) / 10.0f;
+            }
+        });
+        
+        currentY += spacing;
 
-                @Override
-                protected void applyValue() {
-                    // Przeliczanie wartości suwaka (0.0 do 1.0) na skale (0.5 do 2.0)
-                    float rawScale = 0.5f + (float) this.value * 1.5f;
-                    // Zaokrąglenie do jednego miejsca po przecinku (np. 1.1x, 1.2x)
-                    HudConfig.hudScale = Math.round(rawScale * 10.0f) / 10.0f;
-                }
-            });
-        } 
-        // Zakładka 1: MODEL 3D
-        else if (activeTab == 1) {
-            this.addDrawableChild(ButtonWidget.builder(Text.of("Model Skina 3D: " + (HudConfig.showSkin ? "§aWŁĄCZONY" : "§cWYŁĄCZONY")), button -> {
-                HudConfig.showSkin = !HudConfig.showSkin;
-                button.setMessage(Text.of("Model Skina 3D: " + (HudConfig.showSkin ? "§aWŁĄCZONY" : "§cWYŁĄCZONY")));
-            }).dimensions(buttonX, 50, buttonWidth, 20).build());
-        } 
-        // Zakładka 2: STATY
-        else if (activeTab == 2) {
-            this.addDrawableChild(ButtonWidget.builder(Text.of("Minecraftowe Serca: " + (HudConfig.showHearts ? "§aWŁĄCZONY" : "§cWYŁĄCZONY")), button -> {
-                HudConfig.showHearts = !HudConfig.showHearts;
-                button.setMessage(Text.of("Minecraftowe Serca: " + (HudConfig.showHearts ? "§aWŁĄCZONY" : "§cWYŁĄCZONY")));
-            }).dimensions(buttonX, 50, buttonWidth, 20).build());
+        // 3. Włącznik Modelu 3D
+        this.addDrawableChild(ButtonWidget.builder(Text.of("Model Skina 3D: " + (HudConfig.showSkin ? "§aWŁĄCZONY" : "§cWYŁĄCZONY")), button -> {
+            HudConfig.showSkin = !HudConfig.showSkin;
+            button.setMessage(Text.of("Model Skina 3D: " + (HudConfig.showSkin ? "§aWŁĄCZONY" : "§cWYŁĄCZONY")));
+        }).dimensions(buttonX, currentY, buttonWidth, 20).build());
+        
+        currentY += spacing;
 
-            this.addDrawableChild(ButtonWidget.builder(Text.of("Minecraftowy Armor: " + (HudConfig.showArmor ? "§aWŁĄCZONY" : "§cWYŁĄCZONY")), button -> {
-                HudConfig.showArmor = !HudConfig.showArmor;
-                button.setMessage(Text.of("Minecraftowy Armor: " + (HudConfig.showArmor ? "§aWŁĄCZONY" : "§cWYŁĄCZONY")));
-            }).dimensions(buttonX, 75, buttonWidth, 20).build());
-        } 
-        // Zakładka 3: NICKI
-        else if (activeTab == 3) {
-            this.addDrawableChild(ButtonWidget.builder(Text.of("Nick nad Statystykami: " + (HudConfig.showName ? "§aWŁĄCZONY" : "§cWYŁĄCZONY")), button -> {
-                HudConfig.showName = !HudConfig.showName;
-                button.setMessage(Text.of("Nick nad Statystykami: " + (HudConfig.showName ? "§aWŁĄCZONY" : "§cWYŁĄCZONY")));
-            }).dimensions(buttonX, 50, buttonWidth, 20).build());
-        }
-    }
+        // 4. Włącznik Serc
+        this.addDrawableChild(ButtonWidget.builder(Text.of("Minecraftowe Serca: " + (HudConfig.showHearts ? "§aWŁĄCZONY" : "§cWYŁĄCZONY")), button -> {
+            HudConfig.showHearts = !HudConfig.showHearts;
+            button.setMessage(Text.of("Minecraftowe Serca: " + (HudConfig.showHearts ? "§aWŁĄCZONY" : "§cWYŁĄCZONY")));
+        }).dimensions(buttonX, currentY, buttonWidth, 20).build());
+        
+        currentY += spacing;
 
-    private void switchTab(int tab) {
-        this.activeTab = tab;
-        this.init();
+        // 5. Włącznik Armora
+        this.addDrawableChild(ButtonWidget.builder(Text.of("Minecraftowy Armor: " + (HudConfig.showArmor ? "§aWŁĄCZONY" : "§cWYŁĄCZONY")), button -> {
+            HudConfig.showArmor = !HudConfig.showArmor;
+            button.setMessage(Text.of("Minecraftowy Armor: " + (HudConfig.showArmor ? "§aWŁĄCZONY" : "§cWYŁĄCZONY")));
+        }).dimensions(buttonX, currentY, buttonWidth, 20).build());
+        
+        currentY += spacing;
+
+        // 6. Włącznik Nicku
+        this.addDrawableChild(ButtonWidget.builder(Text.of("Nick nad Statystykami: " + (HudConfig.showName ? "§aWŁĄCZONY" : "§cWYŁĄCZONY")), button -> {
+            HudConfig.showName = !HudConfig.showName;
+            button.setMessage(Text.of("Nick nad Statystykami: " + (HudConfig.showName ? "§aWŁĄCZONY" : "§cWYŁĄCZONY")));
+        }).dimensions(buttonX, currentY, buttonWidth, 20).build());
     }
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         this.renderInGameBackground(context);
+
+        // Napis tytułowy menu na środku ekranu
+        int centerX = this.width / 2;
+        context.drawCenteredTextWithShadow(this.textRenderer, "USTAWIENIA OGÓLNE", centerX, 20, 0xFFFFFF);
 
         // Skalowanie podglądu przesuwania (szary kwadrat) zgodnie z wybraną skalą
         int boxWidth = (int) (150 * HudConfig.hudScale);
