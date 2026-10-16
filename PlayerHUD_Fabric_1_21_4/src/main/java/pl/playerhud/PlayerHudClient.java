@@ -5,6 +5,7 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
+import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.ingame.InventoryScreen;
@@ -13,6 +14,7 @@ import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.entity.EntityPose;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.util.ActionResult;
 import net.minecraft.util.Identifier;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
@@ -22,10 +24,9 @@ import java.util.UUID;
 public class PlayerHudClient implements ClientModInitializer {
     public static KeyBinding openSettingsKey;
     
-    // System śledzenia zaatakowanego celu (Combat Tracker)
     public static UUID targetPlayerUuid = null;
     public static long lastAttackTime = 0;
-    private static final long HUD_DURATION_MS = 15000; // 15 sekund
+    private static final long HUD_DURATION_MS = 15000;
 
     @Override
     public void onInitializeClient() {
@@ -41,20 +42,25 @@ public class PlayerHudClient implements ClientModInitializer {
                 client.setScreen(new HudSettingsScreen());
             }
             
-            // Ukrywanie HUDu po 15 sekundach bez zadania obrażeń
             if (targetPlayerUuid != null && (System.currentTimeMillis() - lastAttackTime > HUD_DURATION_MS)) {
                 targetPlayerUuid = null;
             }
         });
 
-        // Czyszczenie celu przy zmianie serwera / wyjściu z gry
+        AttackEntityCallback.EVENT.register((player, world, hand, entity, hitResult) -> {
+            if (world.isClient() && entity instanceof PlayerEntity) {
+                targetPlayerUuid = entity.getUuid();
+                lastAttackTime = System.currentTimeMillis();
+            }
+            return ActionResult.PASS;
+        });
+
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> targetPlayerUuid = null);
 
         HudRenderCallback.EVENT.register((drawContext, tickCounter) -> {
             MinecraftClient client = MinecraftClient.getInstance();
             if (client.player == null || client.world == null || client.currentScreen != null || targetPlayerUuid == null) return;
 
-            // Szukanie zapamiętanego gracza w świecie gry
             PlayerEntity targetPlayer = null;
             for (PlayerEntity p : client.world.getPlayers()) {
                 if (p.getUuid().equals(targetPlayerUuid)) {
@@ -74,11 +80,8 @@ public class PlayerHudClient implements ClientModInitializer {
 
         int currentX = HudConfig.hudX;
         int currentY = HudConfig.hudY;
-        int startX = currentX;
 
-        // 1. Rendering postaci 3D (Zablokowana rotacja i pozycja stojąca)
         if (HudConfig.showSkin) {
-            // Wymuszenie stałego gapienia się wprost na kamerę (0.0F obrotu głowy i ciała)
             float savedYaw = target.bodyYaw;
             float savedHeadYaw = target.headYaw;
             float savedPitch = target.getPitch();
@@ -87,7 +90,7 @@ public class PlayerHudClient implements ClientModInitializer {
             target.bodyYaw = 0.0F;
             target.headYaw = 0.0F;
             target.setPitch(0.0F);
-            target.setPose(EntityPose.STANDING); // Zmuszenie modelu do stania (ignoruje leżenie/pływanie)
+            target.setPose(EntityPose.STANDING);
 
             Quaternionf rotation = new Quaternionf().rotationXYZ(0.0F, 3.1415927F, 3.1415927F);
             Quaternionf cameraOrientation = new Quaternionf().rotationXYZ(0.0F, 0.0F, 0.0F);
@@ -103,7 +106,6 @@ public class PlayerHudClient implements ClientModInitializer {
                     target
             );
 
-            // Przywrócenie oryginalnego stanu gracza dla silnika gry
             target.bodyYaw = savedYaw;
             target.headYaw = savedHeadYaw;
             target.setPitch(savedPitch);
@@ -114,13 +116,11 @@ public class PlayerHudClient implements ClientModInitializer {
 
         int statsY = currentY + 5;
 
-        // 2. Rendering Nicku nad paskami statystyk (Ukryty z tradycyjnej pozycji)
         if (HudConfig.showName) {
             context.drawText(client.textRenderer, "§6§l" + target.getName().getString(), currentX, statsY, 0xFFFFFF, true);
             statsY += 12;
         }
 
-        // 3. Graficzny Minecraftowy Armor HUD (Nad sercami)
         if (HudConfig.showArmor) {
             int armorPoints = target.getArmor();
             for (int i = 0; i < 10; i++) {
@@ -135,13 +135,11 @@ public class PlayerHudClient implements ClientModInitializer {
             statsY += 10;
         }
 
-        // 4. Rendering Serduszek i Absorpcji (Max 10 w rządku)
         if (HudConfig.showHearts) {
             float hp = target.getHealth();
             float absorption = target.getAbsorptionAmount();
             int index = 0;
 
-            // Serca podstawowe
             for (int i = 0; i < hp; i += 2) {
                 int row = index / 10;
                 int col = index % 10;
@@ -157,7 +155,6 @@ public class PlayerHudClient implements ClientModInitializer {
                 index++;
             }
 
-            // Serca absorpcji
             if (absorption > 0) {
                 for (int i = 0; i < absorption; i += 2) {
                     int row = index / 10;
