@@ -19,7 +19,7 @@ public class HudSettingsScreen extends Screen {
     protected void init() {
         this.clearChildren();
 
-        // --- PASEK ZAKŁADEK (Na samej górze menu) ---
+        // --- PASEK ZAKŁADEK ---
         this.addDrawableChild(ButtonWidget.builder(Text.of("1. OGÓLNE"), b -> switchTab(0)).dimensions(10, 10, 85, 20).build());
         this.addDrawableChild(ButtonWidget.builder(Text.of("2. MODEL 3D"), b -> switchTab(1)).dimensions(100, 10, 85, 20).build());
         this.addDrawableChild(ButtonWidget.builder(Text.of("3. STATY"), b -> switchTab(2)).dimensions(190, 10, 85, 20).build());
@@ -79,7 +79,8 @@ public class HudSettingsScreen extends Screen {
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        this.renderBackground(context, mouseX, mouseY, delta);
+        // Zaktualizowana metoda rysowania przyciemnionego tła menu w 1.21.4
+        this.renderInGameBackground(context);
 
         // Tło podglądu strefy przesuwania HUDu
         context.fill(HudConfig.hudX, HudConfig.hudY, HudConfig.hudX + 150, HudConfig.hudY + 80, 0x66000000);
