@@ -16,6 +16,7 @@ import net.minecraft.client.util.InputUtil;
 import net.minecraft.entity.EntityPose;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.ItemStack;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Identifier;
 import org.joml.Quaternionf;
@@ -25,12 +26,9 @@ import java.util.UUID;
 
 public class PlayerHudClient implements ClientModInitializer {
     public static KeyBinding openSettingsKey;
-    
     public static UUID targetPlayerUuid = null;
     public static long lastAttackTime = 0;
     private static final long HUD_DURATION_MS = 15000;
-    
-    // Wirtualny gracz do stabilnego renderowania skina 3D
     private static OtherClientPlayerEntity fakeRenderPlayer = null;
 
     @Override
@@ -46,7 +44,6 @@ public class PlayerHudClient implements ClientModInitializer {
             while (openSettingsKey.wasPressed()) {
                 client.setScreen(new HudSettingsScreen());
             }
-            
             if (targetPlayerUuid != null && (System.currentTimeMillis() - lastAttackTime > HUD_DURATION_MS)) {
                 targetPlayerUuid = null;
                 fakeRenderPlayer = null;
@@ -57,7 +54,7 @@ public class PlayerHudClient implements ClientModInitializer {
             if (world.isClient() && entity instanceof PlayerEntity) {
                 targetPlayerUuid = entity.getUuid();
                 lastAttackTime = System.currentTimeMillis();
-                fakeRenderPlayer = null; // Reset klona przy zmianie celu
+                fakeRenderPlayer = null;
             }
             return ActionResult.PASS;
         });
@@ -82,21 +79,13 @@ public class PlayerHudClient implements ClientModInitializer {
             if (targetPlayer != null && !targetPlayer.isRemoved()) {
                 if (!HudConfig.isEnabled) return;
 
-                // --- AKTYWACJA SUWAKA SKALI ---
-                // Zapisujemy stan macierzy przed transformacją
                 drawContext.getMatrices().push();
-                
-                // Przesuwamy punkt zero do pozycji HUD-a, aby skalował się od lewego górnego rogu swojej pozycji
                 drawContext.getMatrices().translate(HudConfig.hudX, HudConfig.hudY, 0.0f);
-                // Nakładamy wybraną skalę
                 drawContext.getMatrices().scale(HudConfig.hudScale, HudConfig.hudScale, 1.0f);
-                // Przesuwamy z powrotem, aby logika rysowania myślała, że rysuje od pozycji (0, 0)
                 drawContext.getMatrices().translate(-HudConfig.hudX, -HudConfig.hudY, 0.0f);
 
-                // Rysujemy spersonalizowany i wyskalowany HUD
                 renderTargetStats(drawContext, client, targetPlayer);
 
-                // Przywracamy domyślny stan macierzy, aby nie zepsuć reszty interfejsu gry
                 drawContext.getMatrices().pop();
             }
         });
@@ -106,26 +95,22 @@ public class PlayerHudClient implements ClientModInitializer {
         int currentX = HudConfig.hudX;
         int currentY = HudConfig.hudY;
 
-        // 1. STABILNY RENDERING 3D (Za pomocą wirtualnego klona gracza)
         if (HudConfig.showSkin) {
             if (fakeRenderPlayer == null || !fakeRenderPlayer.getUuid().equals(target.getUuid())) {
                 fakeRenderPlayer = new OtherClientPlayerEntity(client.world, target.getGameProfile());
             }
-
-            // Kopiowanie aktualnego pancerza i przedmiotów z prawdziwego gracza na klona
             for (EquipmentSlot slot : EquipmentSlot.values()) {
                 fakeRenderPlayer.equipStack(slot, target.getEquippedStack(slot));
             }
 
-            // Całkowite zamrożenie rotacji i wymuszenie pozycji stojącej na klonie
             fakeRenderPlayer.bodyYaw = 0.0F;
             fakeRenderPlayer.headYaw = 0.0F;
             fakeRenderPlayer.setPitch(0.0F);
             fakeRenderPlayer.prevBodyYaw = 0.0F;
-            fakeRenderPlayer.prevHeadYaw = 0.0F;
+            fakeRenderPlayer.headYaw = 0.0F;
             fakeRenderPlayer.prevPitch = 0.0F;
-            fakeRenderPlayer.hurtTime = 0; // Likwiduje telepanie i czerwony błysk po hicie
-            fakeRenderPlayer.setPose(EntityPose.STANDING); // Blokuje leżenie i pływanie
+            fakeRenderPlayer.hurtTime = 0;
+            fakeRenderPlayer.setPose(EntityPose.STANDING);
 
             Quaternionf rotation = new Quaternionf().rotationXYZ(0.0F, 3.1415927F, 3.1415927F);
             Quaternionf cameraOrientation = new Quaternionf().rotationXYZ(0.0F, 0.0F, 0.0F);
@@ -151,9 +136,11 @@ public class PlayerHudClient implements ClientModInitializer {
             statsY += 12;
         }
 
-        // WYRÓWNANIE: Zmiana mnożnika pozycji X z "i * 8" na "i * 9" dopasowuje pancerz do szerokości serc
-        if (HudConfig.showArmor) {
-            int armorPoints = target.getArmor();
+        int armorPoints = target.getArmor();
+
+        // OBSŁUGA 3 TRYBÓW WYŚWIETLANIA ARMORA
+        if (HudConfig.armorDisplayMode == 0) {
+            // TRYB 0: Tradycyjne ikony tarczy
             for (int i = 0; i < 10; i++) {
                 int armorX = currentX + i * 9; 
                 context.drawGuiTexture(RenderLayer::getGuiTextured, Identifier.ofVanilla("hud/armor_empty"), armorX, statsY, 9, 9);
@@ -164,14 +151,26 @@ public class PlayerHudClient implements ClientModInitializer {
                 }
             }
             statsY += 10;
+        } 
+        else if (HudConfig.armorDisplayMode == 1) {
+            // TRYB 1: Procentowa wartość pancerza (max to 20 punktów)
+            int armorPct = (int) ((armorPoints / 20.0f) * 100);
+            context.drawText(client.textRenderer, "§9Ochrona: §f" + armorPct + "%", currentX, statsY, 0xFFFFFF, true);
+            statsY += 10;
+        } 
+        else if (HudConfig.armorDisplayMode == 2) {
+            // TRYB 2: Liczbowy pancerz (np. Armor: 15 / 20)
+            context.drawText(client.textRenderer, "§9Armor: §f" + armorPoints + " / 20", currentX, statsY, 0xFFFFFF, true);
+            statsY += 10;
         }
 
-        if (HudConfig.showHearts) {
-            float hp = target.getHealth();
-            float maxHp = target.getMaxHealth();
-            float absorption = target.getAbsorptionAmount();
-            int index = 0;
+        float hp = target.getHealth();
+        float maxHp = target.getMaxHealth();
+        float absorption = target.getAbsorptionAmount();
 
+        // OBSŁUGA 3 TRYBÓW WYŚWIETLANIA ZDROWIA
+        if (HudConfig.hpDisplayMode == 0) {
+            int index = 0;
             for (int i = 0; i < maxHp; i += 2) {
                 int row = index / 10;
                 int col = index % 10;
@@ -179,30 +178,44 @@ public class PlayerHudClient implements ClientModInitializer {
                 int heartY = statsY + row * 10;
 
                 context.drawGuiTexture(RenderLayer::getGuiTextured, Identifier.ofVanilla("hud/heart/container"), heartX, heartY, 9, 9);
-                if (hp - i >= 2) {
+                float diff = hp - i;
+                if (diff >= 1.5f) {
                     context.drawGuiTexture(RenderLayer::getGuiTextured, Identifier.ofVanilla("hud/heart/full"), heartX, heartY, 9, 9);
-                } else if (hp - i > 0) {
+                } else if (diff > 0.1f) {
                     context.drawGuiTexture(RenderLayer::getGuiTextured, Identifier.ofVanilla("hud/heart/half"), heartX, heartY, 9, 9);
                 }
                 index++;
             }
+            statsY += (((int)maxHp - 1) / 20 + 1) * 10;
 
             if (absorption > 0) {
+                int absIndex = 0;
                 for (int i = 0; i < absorption; i += 2) {
-                    int row = index / 10;
-                    int col = index % 10;
+                    int row = absIndex / 10;
+                    int col = absIndex % 10;
                     int heartX = currentX + col * 9;
                     int heartY = statsY + row * 10;
 
                     context.drawGuiTexture(RenderLayer::getGuiTextured, Identifier.ofVanilla("hud/heart/container"), heartX, heartY, 9, 9);
-                    if (absorption - i >= 2) {
+                    float diffAbs = absorption - i;
+                    if (diffAbs >= 1.5f) {
                         context.drawGuiTexture(RenderLayer::getGuiTextured, Identifier.ofVanilla("hud/heart/absorbing_full"), heartX, heartY, 9, 9);
-                    } else {
+                    } else if (diffAbs > 0.1f) {
                         context.drawGuiTexture(RenderLayer::getGuiTextured, Identifier.ofVanilla("hud/heart/absorbing_half"), heartX, heartY, 9, 9);
                     }
-                    index++;
+                    absIndex++;
                 }
+                statsY += ((int)(absorption - 1) / 20 + 1) * 10;
             }
-        }
-    }
-}
+        } 
+        else if (HudConfig.hpDisplayMode == 1) {
+            int pct = (int) ((hp / maxHp) * 100);
+            context.drawText(client.textRenderer, "§cŻycie: §f" + pct + "%", currentX, statsY, 0xFFFFFF, true);
+            statsY += 10;
+            
+            if (absorption > 0) {
+                context.drawText(client.textRenderer, "§eAbsorpcja: §f+" + String.format("%.1f", absorption), currentX, statsY, 0xFFFFFF, true);
+                statsY += 10;
+            }
+        } 
+        else if (HudConfig.hpDisplayMode == 2) {
