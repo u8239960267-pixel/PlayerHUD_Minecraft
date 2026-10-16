@@ -13,6 +13,8 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.hit.HitResult;
+import org.joml.Quaternionf;
+import org.joml.Vector3f;
 import org.lwjgl.glfw.GLFW;
 
 public class PlayerHudClient implements ClientModInitializer {
@@ -53,17 +55,25 @@ public class PlayerHudClient implements ClientModInitializer {
         int currentX = HudConfig.hudX;
         int currentY = HudConfig.hudY;
 
+        // 1. Rendering postaci 3D gracza dopasowany do standardu Minecraft 1.21.4
         if (HudConfig.showSkin) {
+            Quaternionf rotation = new Quaternionf().rotationXYZ(0.0F, 0.0F, 3.1415927F);
+            Quaternionf cameraOrientation = new Quaternionf().rotationXYZ(0.0F, 0.0F, 0.0F);
+            
             InventoryScreen.drawEntity(
-                    context, currentX + 20, currentY + 70, 30,
-                    (float)(currentX + 20) - client.getWindow().getScaledWidth() / 2,
-                    (float)(currentY + 35) - client.getWindow().getScaledHeight() / 2,
+                    context, 
+                    (float)(currentX + 20), 
+                    (float)(currentY + 70), 
+                    30.0F, 
+                    new Vector3f(0.0F, 0.0F, 0.0F), 
+                    rotation, 
+                    cameraOrientation, 
                     target
             );
             currentX += 50;
         }
 
-        // Zaktualizowany system rysowania serc - zgodny z Minecraft 1.21.4
+        // 2. Rendering serduszek (Poprawione argumenty drawGuiTexture dla 1.21.4)
         if (HudConfig.showHearts) {
             float hp = target.getHealth();
             float absorption = target.getAbsorptionAmount();
@@ -76,11 +86,11 @@ public class PlayerHudClient implements ClientModInitializer {
                 int heartX = currentX + col * 9;
                 int heartY = currentY + row * 10;
 
-                context.drawGuiTexture(Identifier.ofVanilla("hud/heart/container"), heartX, heartY, 9, 9);
+                context.drawGuiTexture(RenderLayer::getGuiTextured, Identifier.ofVanilla("hud/heart/container"), heartX, heartY, 9, 9);
                 if (hp - i >= 2) {
-                    context.drawGuiTexture(Identifier.ofVanilla("hud/heart/full"), heartX, heartY, 9, 9);
+                    context.drawGuiTexture(RenderLayer::getGuiTextured, Identifier.ofVanilla("hud/heart/full"), heartX, heartY, 9, 9);
                 } else {
-                    context.drawGuiTexture(Identifier.ofVanilla("hud/heart/half"), heartX, heartY, 9, 9);
+                    context.drawGuiTexture(RenderLayer::getGuiTextured, Identifier.ofVanilla("hud/heart/half"), heartX, heartY, 9, 9);
                 }
                 index++;
             }
@@ -93,17 +103,18 @@ public class PlayerHudClient implements ClientModInitializer {
                     int heartX = currentX + col * 9;
                     int heartY = currentY + row * 10;
 
-                    context.drawGuiTexture(Identifier.ofVanilla("hud/heart/container"), heartX, heartY, 9, 9);
+                    context.drawGuiTexture(RenderLayer::getGuiTextured, Identifier.ofVanilla("hud/heart/container"), heartX, heartY, 9, 9);
                     if (absorption - i >= 2) {
-                        context.drawGuiTexture(Identifier.ofVanilla("hud/heart/absorbing_full"), heartX, heartY, 9, 9);
+                        context.drawGuiTexture(RenderLayer::getGuiTextured, Identifier.ofVanilla("hud/heart/absorbing_full"), heartX, heartY, 9, 9);
                     } else {
-                        context.drawGuiTexture(Identifier.ofVanilla("hud/heart/absorbing_half"), heartX, heartY, 9, 9);
+                        context.drawGuiTexture(RenderLayer::getGuiTextured, Identifier.ofVanilla("hud/heart/absorbing_half"), heartX, heartY, 9, 9);
                     }
                     index++;
                 }
             }
         }
 
+        // 3. Punkty zbroi pancerza
         if (HudConfig.showArmor) {
             int armorPoints = target.getArmor();
             int textY = currentY + ((target.getHealth() > 20) ? 24 : 14);
