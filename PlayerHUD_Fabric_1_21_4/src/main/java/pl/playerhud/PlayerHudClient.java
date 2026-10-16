@@ -9,10 +9,12 @@ import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.ingame.InventoryScreen;
+import net.minecraft.client.network.OtherClientPlayerEntity;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.entity.EntityPose;
+import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Identifier;
@@ -27,6 +29,9 @@ public class PlayerHudClient implements ClientModInitializer {
     public static UUID targetPlayerUuid = null;
     public static long lastAttackTime = 0;
     private static final long HUD_DURATION_MS = 15000;
+    
+    // Wirtualny gracz do stabilnego renderowania skina 3D
+    private static OtherClientPlayerEntity fakeRenderPlayer = null;
 
     @Override
     public void onInitializeClient() {
@@ -44,6 +49,7 @@ public class PlayerHudClient implements ClientModInitializer {
             
             if (targetPlayerUuid != null && (System.currentTimeMillis() - lastAttackTime > HUD_DURATION_MS)) {
                 targetPlayerUuid = null;
+                fakeRenderPlayer = null;
             }
         });
 
@@ -51,11 +57,15 @@ public class PlayerHudClient implements ClientModInitializer {
             if (world.isClient() && entity instanceof PlayerEntity) {
                 targetPlayerUuid = entity.getUuid();
                 lastAttackTime = System.currentTimeMillis();
+                fakeRenderPlayer = null; // Reset klona przy zmianie celu
             }
             return ActionResult.PASS;
         });
 
-        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> targetPlayerUuid = null);
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
+            targetPlayerUuid = null;
+            fakeRenderPlayer = null;
+        });
 
         HudRenderCallback.EVENT.register((drawContext, tickCounter) -> {
             MinecraftClient client = MinecraftClient.getInstance();
@@ -81,21 +91,26 @@ public class PlayerHudClient implements ClientModInitializer {
         int currentX = HudConfig.hudX;
         int currentY = HudConfig.hudY;
 
-        // 1. Rendering postaci 3D (Zablokowanie leżenia/pływania oraz rotacji)
+        // 1. STABILNY RENDERING 3D (Za pomocą wirtualnego klona gracza)
         if (HudConfig.showSkin) {
-            float savedYaw = target.bodyYaw;
-            float savedHeadYaw = target.headYaw;
-            float savedPitch = target.getPitch();
-            EntityPose savedPose = target.getPose();
-            
-            // CAŁKOWITE WYMUSZENIE POZYCJI STOJĄCEJ DLA 1.21.4
-            target.bodyYaw = 0.0F;
-            target.headYaw = 0.0F;
-            target.setPitch(0.0F);
-            target.setPose(EntityPose.STANDING);
-            target.prevBodyYaw = 0.0F;
-            target.prevHeadYaw = 0.0F;
-            target.prevPitch = 0.0F;
+            if (fakeRenderPlayer == null || !fakeRenderPlayer.getUuid().equals(target.getUuid())) {
+                fakeRenderPlayer = new OtherClientPlayerEntity(client.world, target.getGameProfile());
+            }
+
+            // Kopiowanie aktualnego pancerza i przedmiotów z prawdziwego gracza na klona
+            for (EquipmentSlot slot : EquipmentSlot.values()) {
+                fakeRenderPlayer.equipStack(slot, target.getEquippedStack(slot));
+            }
+
+            // Całkowite zamrożenie rotacji i wymuszenie pozycji stojącej na klonie
+            fakeRenderPlayer.bodyYaw = 0.0F;
+            fakeRenderPlayer.headYaw = 0.0F;
+            fakeRenderPlayer.setPitch(0.0F);
+            fakeRenderPlayer.prevBodyYaw = 0.0F;
+            fakeRenderPlayer.prevHeadYaw = 0.0F;
+            fakeRenderPlayer.prevPitch = 0.0F;
+            fakeRenderPlayer.hurtTime = 0; // Likwiduje telepanie i czerwony błysk po hicie
+            fakeRenderPlayer.setPose(EntityPose.STANDING); // Blokuje leżenie i pływanie
 
             Quaternionf rotation = new Quaternionf().rotationXYZ(0.0F, 3.1415927F, 3.1415927F);
             Quaternionf cameraOrientation = new Quaternionf().rotationXYZ(0.0F, 0.0F, 0.0F);
@@ -108,13 +123,8 @@ public class PlayerHudClient implements ClientModInitializer {
                     new Vector3f(0.0F, 0.0F, 0.0F), 
                     rotation, 
                     cameraOrientation, 
-                    target
+                    fakeRenderPlayer
             );
-
-            target.bodyYaw = savedYaw;
-            target.headYaw = savedHeadYaw;
-            target.setPitch(savedPitch);
-            target.setPose(savedPose);
 
             currentX += 60;
         }
@@ -126,7 +136,6 @@ public class PlayerHudClient implements ClientModInitializer {
             statsY += 12;
         }
 
-        // 2. Naprawiony Armor HUD (Prawidłowe ścieżki ikon Minecraft 1.21.4)
         if (HudConfig.showArmor) {
             int armorPoints = target.getArmor();
             for (int i = 0; i < 10; i++) {
@@ -141,14 +150,12 @@ public class PlayerHudClient implements ClientModInitializer {
             statsY += 10;
         }
 
-        // 3. System Serc wyświetlający puste/zbite serduszka (Obsługa np. 30 serc max i 20 aktualnych)
         if (HudConfig.showHearts) {
             float hp = target.getHealth();
             float maxHp = target.getMaxHealth();
             float absorption = target.getAbsorptionAmount();
             int index = 0;
 
-            // Rysowanie pojemników (pustych serc) na podstawie maksymalnego zdrowia gracza
             for (int i = 0; i < maxHp; i += 2) {
                 int row = index / 10;
                 int col = index % 10;
@@ -156,8 +163,6 @@ public class PlayerHudClient implements ClientModInitializer {
                 int heartY = statsY + row * 10;
 
                 context.drawGuiTexture(RenderLayer::getGuiTextured, Identifier.ofVanilla("hud/heart/container"), heartX, heartY, 9, 9);
-                
-                // Wypełnianie serduszek czerwonym kolorem (jeśli gracz ma tam zdrowie)
                 if (hp - i >= 2) {
                     context.drawGuiTexture(RenderLayer::getGuiTextured, Identifier.ofVanilla("hud/heart/full"), heartX, heartY, 9, 9);
                 } else if (hp - i > 0) {
@@ -166,7 +171,6 @@ public class PlayerHudClient implements ClientModInitializer {
                 index++;
             }
 
-            // Dodatkowe złote serca absorpcji (w nowych rządkach na samym końcu)
             if (absorption > 0) {
                 for (int i = 0; i < absorption; i += 2) {
                     int row = index / 10;
