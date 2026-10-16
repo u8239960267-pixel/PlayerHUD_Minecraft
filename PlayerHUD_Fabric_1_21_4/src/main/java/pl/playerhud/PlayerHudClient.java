@@ -107,7 +107,7 @@ public class PlayerHudClient implements ClientModInitializer {
             fakeRenderPlayer.headYaw = 0.0F;
             fakeRenderPlayer.setPitch(0.0F);
             fakeRenderPlayer.prevBodyYaw = 0.0F;
-            fakeRenderPlayer.headYaw = 0.0F;
+            fakeRenderPlayer.prevHeadYaw = 0.0F;
             fakeRenderPlayer.prevPitch = 0.0F;
             fakeRenderPlayer.hurtTime = 0;
             fakeRenderPlayer.setPose(EntityPose.STANDING);
@@ -135,12 +135,10 @@ public class PlayerHudClient implements ClientModInitializer {
             context.drawText(client.textRenderer, "§6§l" + target.getName().getString(), currentX, statsY, 0xFFFFFF, true);
             statsY += 12;
         }
-
         int armorPoints = target.getArmor();
 
         // OBSŁUGA 3 TRYBÓW WYŚWIETLANIA ARMORA
         if (HudConfig.armorDisplayMode == 0) {
-            // TRYB 0: Tradycyjne ikony tarczy
             for (int i = 0; i < 10; i++) {
                 int armorX = currentX + i * 9; 
                 context.drawGuiTexture(RenderLayer::getGuiTextured, Identifier.ofVanilla("hud/armor_empty"), armorX, statsY, 9, 9);
@@ -153,13 +151,11 @@ public class PlayerHudClient implements ClientModInitializer {
             statsY += 10;
         } 
         else if (HudConfig.armorDisplayMode == 1) {
-            // TRYB 1: Procentowa wartość pancerza (max to 20 punktów)
             int armorPct = (int) ((armorPoints / 20.0f) * 100);
             context.drawText(client.textRenderer, "§9Ochrona: §f" + armorPct + "%", currentX, statsY, 0xFFFFFF, true);
             statsY += 10;
         } 
         else if (HudConfig.armorDisplayMode == 2) {
-            // TRYB 2: Liczbowy pancerz (np. Armor: 15 / 20)
             context.drawText(client.textRenderer, "§9Armor: §f" + armorPoints + " / 20", currentX, statsY, 0xFFFFFF, true);
             statsY += 10;
         }
@@ -219,3 +215,29 @@ public class PlayerHudClient implements ClientModInitializer {
             }
         } 
         else if (HudConfig.hpDisplayMode == 2) {
+            context.drawText(client.textRenderer, "§cHP: §f" + String.format("%.1f", hp) + " / " + String.format("%.1f", maxHp), currentX, statsY, 0xFFFFFF, true);
+            statsY += 10;
+            
+            if (absorption > 0) {
+                context.drawText(client.textRenderer, "§eDodatkowe HP: §f" + String.format("%.1f", absorption), currentX, statsY, 0xFFFFFF, true);
+                statsY += 10;
+            }
+        }
+
+        // PRZEDMIOTY (MAIN HAND / OFF HAND)
+        if (HudConfig.showItems) {
+            ItemStack mainHand = target.getMainHandStack();
+            ItemStack offHand = target.getOffHandStack();
+            int itemY = statsY + 4;
+
+            if (!mainHand.isEmpty()) {
+                context.drawItem(mainHand, currentX, itemY);
+                context.drawItemInSlot(client.textRenderer, mainHand, currentX, itemY);
+            }
+            if (!offHand.isEmpty()) {
+                context.drawItem(offHand, currentX + 18, itemY);
+                context.drawItemInSlot(client.textRenderer, offHand, currentX + 18, itemY);
+            }
+        }
+    }
+}
