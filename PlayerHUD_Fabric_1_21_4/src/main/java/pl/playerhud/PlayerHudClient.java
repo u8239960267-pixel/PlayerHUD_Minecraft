@@ -224,7 +224,7 @@ public class PlayerHudClient implements ClientModInitializer {
             }
         }
 
-        // PRZEDMIOTY (MAIN HAND / OFF HAND)
+        // PRZEDMIOTY (MAIN HAND / OFF HAND) - NAPRAWIONE DLA MC 1.21.4
         if (HudConfig.showItems) {
             ItemStack mainHand = target.getMainHandStack();
             ItemStack offHand = target.getOffHandStack();
@@ -232,11 +232,9 @@ public class PlayerHudClient implements ClientModInitializer {
 
             if (!mainHand.isEmpty()) {
                 context.drawItem(mainHand, currentX, itemY);
-                context.drawItemInSlot(client.textRenderer, mainHand, currentX, itemY);
             }
             if (!offHand.isEmpty()) {
                 context.drawItem(offHand, currentX + 18, itemY);
-                context.drawItemInSlot(client.textRenderer, offHand, currentX + 18, itemY);
             }
         }
     }
