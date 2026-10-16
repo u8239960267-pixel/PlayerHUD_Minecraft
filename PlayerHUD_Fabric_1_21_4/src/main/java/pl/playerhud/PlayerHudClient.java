@@ -81,16 +81,21 @@ public class PlayerHudClient implements ClientModInitializer {
         int currentX = HudConfig.hudX;
         int currentY = HudConfig.hudY;
 
+        // 1. Rendering postaci 3D (Zablokowanie leżenia/pływania oraz rotacji)
         if (HudConfig.showSkin) {
             float savedYaw = target.bodyYaw;
             float savedHeadYaw = target.headYaw;
             float savedPitch = target.getPitch();
             EntityPose savedPose = target.getPose();
-
+            
+            // CAŁKOWITE WYMUSZENIE POZYCJI STOJĄCEJ DLA 1.21.4
             target.bodyYaw = 0.0F;
             target.headYaw = 0.0F;
             target.setPitch(0.0F);
             target.setPose(EntityPose.STANDING);
+            target.prevBodyYaw = 0.0F;
+            target.prevHeadYaw = 0.0F;
+            target.prevPitch = 0.0F;
 
             Quaternionf rotation = new Quaternionf().rotationXYZ(0.0F, 3.1415927F, 3.1415927F);
             Quaternionf cameraOrientation = new Quaternionf().rotationXYZ(0.0F, 0.0F, 0.0F);
@@ -121,40 +126,47 @@ public class PlayerHudClient implements ClientModInitializer {
             statsY += 12;
         }
 
+        // 2. Naprawiony Armor HUD (Prawidłowe ścieżki ikon Minecraft 1.21.4)
         if (HudConfig.showArmor) {
             int armorPoints = target.getArmor();
             for (int i = 0; i < 10; i++) {
                 int armorX = currentX + i * 8;
-                context.drawGuiTexture(RenderLayer::getGuiTextured, Identifier.ofVanilla("hud/armor/empty"), armorX, statsY, 9, 9);
+                context.drawGuiTexture(RenderLayer::getGuiTextured, Identifier.ofVanilla("hud/armor_empty"), armorX, statsY, 9, 9);
                 if (armorPoints - (i * 2) >= 2) {
-                    context.drawGuiTexture(RenderLayer::getGuiTextured, Identifier.ofVanilla("hud/armor/full"), armorX, statsY, 9, 9);
+                    context.drawGuiTexture(RenderLayer::getGuiTextured, Identifier.ofVanilla("hud/armor_full"), armorX, statsY, 9, 9);
                 } else if (armorPoints - (i * 2) > 0) {
-                    context.drawGuiTexture(RenderLayer::getGuiTextured, Identifier.ofVanilla("hud/armor/half"), armorX, statsY, 9, 9);
+                    context.drawGuiTexture(RenderLayer::getGuiTextured, Identifier.ofVanilla("hud/armor_half"), armorX, statsY, 9, 9);
                 }
             }
             statsY += 10;
         }
 
+        // 3. System Serc wyświetlający puste/zbite serduszka (Obsługa np. 30 serc max i 20 aktualnych)
         if (HudConfig.showHearts) {
             float hp = target.getHealth();
+            float maxHp = target.getMaxHealth();
             float absorption = target.getAbsorptionAmount();
             int index = 0;
 
-            for (int i = 0; i < hp; i += 2) {
+            // Rysowanie pojemników (pustych serc) na podstawie maksymalnego zdrowia gracza
+            for (int i = 0; i < maxHp; i += 2) {
                 int row = index / 10;
                 int col = index % 10;
                 int heartX = currentX + col * 9;
                 int heartY = statsY + row * 10;
 
                 context.drawGuiTexture(RenderLayer::getGuiTextured, Identifier.ofVanilla("hud/heart/container"), heartX, heartY, 9, 9);
+                
+                // Wypełnianie serduszek czerwonym kolorem (jeśli gracz ma tam zdrowie)
                 if (hp - i >= 2) {
                     context.drawGuiTexture(RenderLayer::getGuiTextured, Identifier.ofVanilla("hud/heart/full"), heartX, heartY, 9, 9);
-                } else {
+                } else if (hp - i > 0) {
                     context.drawGuiTexture(RenderLayer::getGuiTextured, Identifier.ofVanilla("hud/heart/half"), heartX, heartY, 9, 9);
                 }
                 index++;
             }
 
+            // Dodatkowe złote serca absorpcji (w nowych rządkach na samym końcu)
             if (absorption > 0) {
                 for (int i = 0; i < absorption; i += 2) {
                     int row = index / 10;
