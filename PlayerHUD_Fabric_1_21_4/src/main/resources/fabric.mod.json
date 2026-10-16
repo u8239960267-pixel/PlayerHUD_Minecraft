@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "pvphud",
+  "version": "1.0.0",
+  "name": "PVP Stats HUD",
+  "description": "Pokazuje skin przeciwnika, jego zbroje, serca i punkty pancerza z opcja przesuwania.",
+  "authors": [ "Pawelek2583" ],
+  "contact": {},
+  "license": "MIT",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "pl.playerhud.PlayerHudClient"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.15.0",
+    "minecraft": ">=1.21",
+    "fabric-api": "*"
+  }
+}
