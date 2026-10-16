@@ -80,14 +80,29 @@ public class PlayerHudClient implements ClientModInitializer {
             }
 
             if (targetPlayer != null && !targetPlayer.isRemoved()) {
+                if (!HudConfig.isEnabled) return;
+
+                // --- AKTYWACJA SUWAKA SKALI ---
+                // Zapisujemy stan macierzy przed transformacją
+                drawContext.getMatrices().push();
+                
+                // Przesuwamy punkt zero do pozycji HUD-a, aby skalował się od lewego górnego rogu swojej pozycji
+                drawContext.getMatrices().translate(HudConfig.hudX, HudConfig.hudY, 0.0f);
+                // Nakładamy wybraną skalę
+                drawContext.getMatrices().scale(HudConfig.hudScale, HudConfig.hudScale, 1.0f);
+                // Przesuwamy z powrotem, aby logika rysowania myślała, że rysuje od pozycji (0, 0)
+                drawContext.getMatrices().translate(-HudConfig.hudX, -HudConfig.hudY, 0.0f);
+
+                // Rysujemy spersonalizowany i wyskalowany HUD
                 renderTargetStats(drawContext, client, targetPlayer);
+
+                // Przywracamy domyślny stan macierzy, aby nie zepsuć reszty interfejsu gry
+                drawContext.getMatrices().pop();
             }
         });
     }
 
     private void renderTargetStats(DrawContext context, MinecraftClient client, PlayerEntity target) {
-        if (!HudConfig.isEnabled) return;
-
         int currentX = HudConfig.hudX;
         int currentY = HudConfig.hudY;
 
@@ -136,10 +151,11 @@ public class PlayerHudClient implements ClientModInitializer {
             statsY += 12;
         }
 
+        // WYRÓWNANIE: Zmiana mnożnika pozycji X z "i * 8" na "i * 9" dopasowuje pancerz do szerokości serc
         if (HudConfig.showArmor) {
             int armorPoints = target.getArmor();
             for (int i = 0; i < 10; i++) {
-                int armorX = currentX + i * 8;
+                int armorX = currentX + i * 9; 
                 context.drawGuiTexture(RenderLayer::getGuiTextured, Identifier.ofVanilla("hud/armor_empty"), armorX, statsY, 9, 9);
                 if (armorPoints - (i * 2) >= 2) {
                     context.drawGuiTexture(RenderLayer::getGuiTextured, Identifier.ofVanilla("hud/armor_full"), armorX, statsY, 9, 9);
