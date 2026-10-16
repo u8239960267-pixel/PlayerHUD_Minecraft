@@ -63,11 +63,13 @@ public class PlayerHudClient implements ClientModInitializer {
             currentX += 50;
         }
 
+        // Zaktualizowany system rysowania serc - zgodny z Minecraft 1.21.4
         if (HudConfig.showHearts) {
             float hp = target.getHealth();
             float absorption = target.getAbsorptionAmount();
             int index = 0;
 
+            // Czerwone serca
             for (int i = 0; i < hp; i += 2) {
                 int row = index / 10;
                 int col = index % 10;
@@ -83,6 +85,7 @@ public class PlayerHudClient implements ClientModInitializer {
                 index++;
             }
 
+            // Złote serca absorpcji
             if (absorption > 0) {
                 for (int i = 0; i < absorption; i += 2) {
                     int row = index / 10;
