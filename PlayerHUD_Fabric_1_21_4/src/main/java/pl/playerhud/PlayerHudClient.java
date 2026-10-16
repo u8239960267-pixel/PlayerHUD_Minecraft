@@ -10,7 +10,6 @@ import net.minecraft.client.gui.screen.ingame.InventoryScreen;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.util.Identifier;
 import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.hit.HitResult;
 import org.joml.Quaternionf;
@@ -55,7 +54,7 @@ public class PlayerHudClient implements ClientModInitializer {
         int currentX = HudConfig.hudX;
         int currentY = HudConfig.hudY;
 
-        // 1. Rendering postaci 3D gracza (Pełna zgodność z Minecraft 1.21.4)
+        // 1. Rendering postaci 3D gracza (To działa już bezbłędnie na 1.21.4!)
         if (HudConfig.showSkin) {
             Quaternionf rotation = new Quaternionf().rotationXYZ(0.0F, 0.0F, 3.1415927F);
             Quaternionf cameraOrientation = new Quaternionf().rotationXYZ(0.0F, 0.0F, 0.0F);
@@ -73,52 +72,26 @@ public class PlayerHudClient implements ClientModInitializer {
             currentX += 50;
         }
 
-        // 2. Rendering serduszek (Za pomocą identyfikatorów zasobów w 1.21.4)
+        // 2. Wyświetlanie Zdrowia i Absorpcji w postaci czytelnego licznika tekstowego
         if (HudConfig.showHearts) {
-            float hp = target.getHealth();
-            float absorption = target.getAbsorptionAmount();
-            int index = 0;
+            int currentHp = (int) target.getHealth();
+            int maxHp = (int) target.getMaxHealth();
+            int abs = (int) target.getAbsorptionAmount();
 
-            // Rysowanie czerwonych serc (Wykorzystujemy tekstury GUI zarejestrowane w grze)
-            for (int i = 0; i < hp; i += 2) {
-                int row = index / 10;
-                int col = index % 10;
-                int heartX = currentX + col * 9;
-                int heartY = currentY + row * 10;
-
-                context.drawGuiTexture(Identifier.ofVanilla("hud/heart/container"), heartX, heartY, 9, 9);
-                if (hp - i >= 2) {
-                    context.drawGuiTexture(Identifier.ofVanilla("hud/heart/full"), heartX, heartY, 9, 9);
-                } else {
-                    context.drawGuiTexture(Identifier.ofVanilla("hud/heart/half"), heartX, heartY, 9, 9);
-                }
-                index++;
-            }
-
-            // Rysowanie złotej absorpcji
-            if (absorption > 0) {
-                for (int i = 0; i < absorption; i += 2) {
-                    int row = index / 10;
-                    int col = index % 10;
-                    int heartX = currentX + col * 9;
-                    int heartY = currentY + row * 10;
-
-                    context.drawGuiTexture(Identifier.ofVanilla("hud/heart/container"), heartX, heartY, 9, 9);
-                    if (absorption - i >= 2) {
-                        context.drawGuiTexture(Identifier.ofVanilla("hud/heart/absorbing_full"), heartX, heartY, 9, 9);
-                    } else {
-                        context.drawGuiTexture(Identifier.ofVanilla("hud/heart/absorbing_half"), heartX, heartY, 9, 9);
-                    }
-                    index++;
-                }
+            // Rysowanie tekstu życia
+            context.drawText(client.textRenderer, "Zdrowie: §c❤ " + currentHp + "§7/§c" + maxHp, currentX, currentY + 5, 0xFFFFFF, true);
+            
+            // Rysowanie tekstu absorpcji (jeśli gracz ją ma, np. po zjedzeniu koxa)
+            if (abs > 0) {
+                context.drawText(client.textRenderer, "Absorpcja: §e💛 " + abs, currentX, currentY + 15, 0xFFFFFF, true);
             }
         }
 
         // 3. Punkty zbroi pancerza przeciwnika
         if (HudConfig.showArmor) {
             int armorPoints = target.getArmor();
-            int textY = currentY + ((target.getHealth() > 20) ? 24 : 14);
-            context.drawText(client.textRenderer, "Pancerz: §b" + armorPoints, currentX, textY, 0xFFFFFF, true);
+            int textY = currentY + ((target.getAbsorptionAmount() > 0) ? 25 : 15);
+            context.drawText(client.textRenderer, "Pancerz: §b🛡 " + armorPoints, currentX, textY, 0xFFFFFF, true);
         }
     }
 }
