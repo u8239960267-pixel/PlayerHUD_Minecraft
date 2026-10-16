@@ -9,6 +9,7 @@ public class HudSettingsScreen extends Screen {
     private boolean isDragging = false;
     private int dragStartX = 0;
     private int dragStartY = 0;
+    private int activeTab = 0; // 0: Ogólne, 1: Wygląd, 2: Statystyki, 3: Pozycja
 
     public HudSettingsScreen() {
         super(Text.of("Ustawienia Player HUD"));
@@ -16,28 +17,72 @@ public class HudSettingsScreen extends Screen {
 
     @Override
     protected void init() {
-        this.addDrawableChild(ButtonWidget.builder(
-                Text.of("HUD: " + (HudConfig.isEnabled ? "§aWŁĄCZONY" : "§cWYŁĄCZONY")),
-                button -> {
-                    HudConfig.isEnabled = !HudConfig.isEnabled;
-                    button.setMessage(Text.of("HUD: " + (HudConfig.isEnabled ? "§aWŁĄCZONY" : "§cWYŁĄCZONY")));
-                }
-        ).dimensions(10, 10, 140, 20).build());
+        this.clearChildren();
 
-        this.addDrawableChild(ButtonWidget.builder(
-                Text.of("Model 3D: " + (HudConfig.showSkin ? "§aWŁĄCZONY" : "§cWYŁĄCZONY")),
-                button -> {
-                    HudConfig.showSkin = !HudConfig.showSkin;
-                    button.setMessage(Text.of("Model 3D: " + (HudConfig.showSkin ? "§aWŁĄCZONY" : "§cWYŁĄCZONY")));
-                }
-        ).dimensions(10, 35, 140, 20).build());
+        // --- PASEK ZAKŁADEK (Na samej górze menu) ---
+        this.addDrawableChild(ButtonWidget.builder(Text.of("1. OGÓLNE"), b -> switchTab(0)).dimensions(10, 10, 85, 20).build());
+        this.addDrawableChild(ButtonWidget.builder(Text.of("2. MODEL 3D"), b -> switchTab(1)).dimensions(100, 10, 85, 20).build());
+        this.addDrawableChild(ButtonWidget.builder(Text.of("3. STATY"), b -> switchTab(2)).dimensions(190, 10, 85, 20).build());
+        this.addDrawableChild(ButtonWidget.builder(Text.of("4. NICKI"), b -> switchTab(3)).dimensions(280, 10, 85, 20).build());
+
+        // --- ZAWARTOŚĆ ZAKŁADEK ---
+        if (activeTab == 0) {
+            this.addDrawableChild(ButtonWidget.builder(
+                    Text.of("Cały HUD: " + (HudConfig.isEnabled ? "§aWŁĄCZONY" : "§cWYŁĄCZONY")),
+                    button -> {
+                        HudConfig.isEnabled = !HudConfig.isEnabled;
+                        button.setMessage(Text.of("Cały HUD: " + (HudConfig.isEnabled ? "§aWŁĄCZONY" : "§cWYŁĄCZONY")));
+                    }
+            ).dimensions(20, 45, 180, 20).build());
+        } 
+        else if (activeTab == 1) {
+            this.addDrawableChild(ButtonWidget.builder(
+                    Text.of("Model Skina 3D: " + (HudConfig.showSkin ? "§aWŁĄCZONY" : "§cWYŁĄCZONY")),
+                    button -> {
+                        HudConfig.showSkin = !HudConfig.showSkin;
+                        button.setMessage(Text.of("Model Skina 3D: " + (HudConfig.showSkin ? "§aWŁĄCZONY" : "§cWYŁĄCZONY")));
+                    }
+            ).dimensions(20, 45, 180, 20).build());
+        } 
+        else if (activeTab == 2) {
+            this.addDrawableChild(ButtonWidget.builder(
+                    Text.of("Minecraftowe Serca: " + (HudConfig.showHearts ? "§aWŁĄCZONY" : "§cWYŁĄCZONY")),
+                    button -> {
+                        HudConfig.showHearts = !HudConfig.showHearts;
+                        button.setMessage(Text.of("Minecraftowe Serca: " + (HudConfig.showHearts ? "§aWŁĄCZONY" : "§cWYŁĄCZONY")));
+                    }
+            ).dimensions(20, 45, 180, 20).build());
+
+            this.addDrawableChild(ButtonWidget.builder(
+                    Text.of("Minecraftowy Armor: " + (HudConfig.showArmor ? "§aWŁĄCZONY" : "§cWYŁĄCZONY")),
+                    button -> {
+                        HudConfig.showArmor = !HudConfig.showArmor;
+                        button.setMessage(Text.of("Minecraftowy Armor: " + (HudConfig.showArmor ? "§aWŁĄCZONY" : "§cWYŁĄCZONY")));
+                    }
+            ).dimensions(20, 70, 180, 20).build());
+        } 
+        else if (activeTab == 3) {
+            this.addDrawableChild(ButtonWidget.builder(
+                    Text.of("Nick nad Statystykami: " + (HudConfig.showName ? "§aWŁĄCZONY" : "§cWYŁĄCZONY")),
+                    button -> {
+                        HudConfig.showName = !HudConfig.showName;
+                        button.setMessage(Text.of("Nick nad Statystykami: " + (HudConfig.showName ? "§aWŁĄCZONY" : "§cWYŁĄCZONY")));
+                    }
+            ).dimensions(20, 45, 180, 20).build());
+        }
+    }
+
+    private void switchTab(int tab) {
+        this.activeTab = tab;
+        this.init();
     }
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         this.renderBackground(context, mouseX, mouseY, delta);
 
-        context.fill(HudConfig.hudX, HudConfig.hudY, HudConfig.hudX + 140, HudConfig.hudY + 75, 0x66000000);
+        // Tło podglądu strefy przesuwania HUDu
+        context.fill(HudConfig.hudX, HudConfig.hudY, HudConfig.hudX + 150, HudConfig.hudY + 80, 0x66000000);
         context.drawText(this.textRenderer, "§e Złap i przesuń §f", HudConfig.hudX + 5, HudConfig.hudY + 5, 0xFFFFFF, false);
 
         super.render(context, mouseX, mouseY, delta);
@@ -45,23 +90,18 @@ public class HudSettingsScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (button == 0) {
-            if (mouseX >= HudConfig.hudX && mouseX <= HudConfig.hudX + 140 &&
-                mouseY >= HudConfig.hudY && mouseY <= HudConfig.hudY + 75) {
-                this.isDragging = true;
-                this.dragStartX = (int) mouseX - HudConfig.hudX;
-                this.dragStartY = (int) mouseY - HudConfig.hudY;
-                return true;
-            }
+        if (button == 0 && mouseX >= HudConfig.hudX && mouseX <= HudConfig.hudX + 150 && mouseY >= HudConfig.hudY && mouseY <= HudConfig.hudY + 80) {
+            this.isDragging = true;
+            this.dragStartX = (int) mouseX - HudConfig.hudX;
+            this.dragStartY = (int) mouseY - HudConfig.hudY;
+            return true;
         }
         return super.mouseClicked(mouseX, mouseY, button);
     }
 
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        if (button == 0) {
-            this.isDragging = false;
-        }
+        if (button == 0) this.isDragging = false;
         return super.mouseReleased(mouseX, mouseY, button);
     }
 
