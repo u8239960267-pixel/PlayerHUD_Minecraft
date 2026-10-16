@@ -9,4 +9,7 @@ public class HudConfig {
     
     public static int hudX = 30;
     public static int hudY = 30;
+    
+    // Nowa opcja skali (1.0 = 100% standardowy rozmiar)
+    public static float hudScale = 1.0f;
 }
