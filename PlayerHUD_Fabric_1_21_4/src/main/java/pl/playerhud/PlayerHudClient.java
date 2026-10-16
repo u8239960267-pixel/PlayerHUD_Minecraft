@@ -19,7 +19,6 @@ import org.lwjgl.glfw.GLFW;
 
 public class PlayerHudClient implements ClientModInitializer {
     public static KeyBinding openSettingsKey;
-    private static final Identifier HEART_TEXTURES = Identifier.ofVanilla("textures/gui/icons.png");
 
     @Override
     public void onInitializeClient() {
@@ -56,7 +55,7 @@ public class PlayerHudClient implements ClientModInitializer {
         int currentX = HudConfig.hudX;
         int currentY = HudConfig.hudY;
 
-        // 1. Rendering postaci 3D gracza (Zgodny z Minecraft 1.21.4)
+        // 1. Rendering postaci 3D gracza (Pełna zgodność z Minecraft 1.21.4)
         if (HudConfig.showSkin) {
             Quaternionf rotation = new Quaternionf().rotationXYZ(0.0F, 0.0F, 3.1415927F);
             Quaternionf cameraOrientation = new Quaternionf().rotationXYZ(0.0F, 0.0F, 0.0F);
@@ -74,29 +73,29 @@ public class PlayerHudClient implements ClientModInitializer {
             currentX += 50;
         }
 
-        // 2. Rendering serduszek (Za pomocą uniwersalnych koordynatów UV z pliku icons.png)
+        // 2. Rendering serduszek (Za pomocą identyfikatorów zasobów w 1.21.4)
         if (HudConfig.showHearts) {
             float hp = target.getHealth();
             float absorption = target.getAbsorptionAmount();
             int index = 0;
 
-            // Rysowanie czerwonych serc (Puste tło: U=16, V=0 | Pełne: U=52, V=0 | Połówka: U=61, V=0)
+            // Rysowanie czerwonych serc (Wykorzystujemy tekstury GUI zarejestrowane w grze)
             for (int i = 0; i < hp; i += 2) {
                 int row = index / 10;
                 int col = index % 10;
                 int heartX = currentX + col * 9;
                 int heartY = currentY + row * 10;
 
-                context.drawTexture(HEART_TEXTURES, heartX, heartY, 16, 0, 9, 9, 256, 256);
+                context.drawGuiTexture(Identifier.ofVanilla("hud/heart/container"), heartX, heartY, 9, 9);
                 if (hp - i >= 2) {
-                    context.drawTexture(HEART_TEXTURES, heartX, heartY, 52, 0, 9, 9, 256, 256);
+                    context.drawGuiTexture(Identifier.ofVanilla("hud/heart/full"), heartX, heartY, 9, 9);
                 } else {
-                    context.drawTexture(HEART_TEXTURES, heartX, heartY, 61, 0, 9, 9, 256, 256);
+                    context.drawGuiTexture(Identifier.ofVanilla("hud/heart/half"), heartX, heartY, 9, 9);
                 }
                 index++;
             }
 
-            // Rysowanie złotej absorpcji (Pełne: U=160, V=0 | Połówka: U=169, V=0)
+            // Rysowanie złotej absorpcji
             if (absorption > 0) {
                 for (int i = 0; i < absorption; i += 2) {
                     int row = index / 10;
@@ -104,11 +103,11 @@ public class PlayerHudClient implements ClientModInitializer {
                     int heartX = currentX + col * 9;
                     int heartY = currentY + row * 10;
 
-                    context.drawTexture(HEART_TEXTURES, heartX, heartY, 16, 0, 9, 9, 256, 256);
+                    context.drawGuiTexture(Identifier.ofVanilla("hud/heart/container"), heartX, heartY, 9, 9);
                     if (absorption - i >= 2) {
-                        context.drawTexture(HEART_TEXTURES, heartX, heartY, 160, 0, 9, 9, 256, 256);
+                        context.drawGuiTexture(Identifier.ofVanilla("hud/heart/absorbing_full"), heartX, heartY, 9, 9);
                     } else {
-                        context.drawTexture(HEART_TEXTURES, heartX, heartY, 169, 0, 9, 9, 256, 256);
+                        context.drawGuiTexture(Identifier.ofVanilla("hud/heart/absorbing_half"), heartX, heartY, 9, 9);
                     }
                     index++;
                 }
