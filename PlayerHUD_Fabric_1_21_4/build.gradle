@@ -1,5 +1,5 @@
 plugins {
-    id 'fabric-loom' version '1.9.4'
+    id 'fabric-loom' version '1.9.2'
     id 'maven-publish'
 }
 
@@ -10,8 +10,14 @@ base {
     archivesName = project.archives_base_name
 }
 
+// WYMAGANE DLA 1.21.11: Ręczne wymuszenie stabilnej i obsługiwanej wersji unpick
+loom {
+    customUnpickVersion = "2.1.2"
+}
+
 repositories {
-    // Tutaj znajdują się standardowe repozytoria projektu
+    maven { url = "https://maven.fabricmc.net/" }
+    mavenCentral()
 }
 
 dependencies {
