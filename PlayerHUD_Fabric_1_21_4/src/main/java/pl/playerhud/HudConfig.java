@@ -11,8 +11,5 @@ public class HudConfig {
     public static boolean showItems = true;       
     public static int hpDisplayMode = 0; 
     public static int armorDisplayMode = 0;
-
-    // NOWOŚĆ: Przełączniki dla efektów i błysku modelu 3D
-    public static boolean showEffects = true;
     public static boolean showHurtFlash = true;
 }
