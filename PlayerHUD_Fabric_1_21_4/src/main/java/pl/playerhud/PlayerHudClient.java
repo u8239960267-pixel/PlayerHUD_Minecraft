@@ -235,7 +235,6 @@ public class PlayerHudClient implements ClientModInitializer {
 
         // CZYSZCZONE IKONY EFEKTÓW MIKSTUR (IDEALNIE POD SERCAMI, MAX 5 NA RZĄD)
         if (HudConfig.showEffects && !target.getStatusEffects().isEmpty()) {
-            StatusEffectSpriteManager spriteManager = client.getStatusEffectSpriteManager();
             int effectX = currentX; 
             int effectY = statsY + 2;
             int count = 0;
@@ -246,12 +245,13 @@ public class PlayerHudClient implements ClientModInitializer {
                     effectY += 20; 
                 }
 
-                net.minecraft.client.texture.Sprite sprite = spriteManager.getSprite(effect.getEffectType());
-                if (sprite != null) {
-                    // POPRAWKA DLA 1.21.4: Usunięty zbędny parametr '0' - teraz zgadza się z sygnaturą drawSprite(x, y, z, width, height, sprite)
-                    context.drawSprite(effectX, effectY, 0, 18, 18, sprite);
+                // POPRAWKA DLA 1.21.4: Pobieramy zarejestrowany identyfikator tekstury GUI dla danego efektu
+                Identifier textureId = effect.getEffectType().value().getBackgroundSpriteId();
+                if (textureId != null) {
+                    // Rysujemy czystą ikonę (duszka) za pomocą wbudowanej metody drawGuiTexture
+                    context.drawGuiTexture(RenderLayer::getGuiTextured, textureId, effectX, effectY, 18, 18);
 
-                    // Dodawanie małej cyfry poziomu w prawym dolnym rogu (dokładnie jak na screenie)
+                    // Dodawanie małej cyfry poziomu w prawym dolnym rogu ikony
                     int amplifier = effect.getAmplifier();
                     if (amplifier > 0) {
                         String levelText = String.valueOf(amplifier + 1);
@@ -262,7 +262,6 @@ public class PlayerHudClient implements ClientModInitializer {
                 effectX += 22; 
                 count++;
             }
-            // Aktualizacja pozycji Y, aby przedmioty zjechały pod ikony potek
             statsY += (((count - 1) / 5) + 1) * 20;
         }
 
