@@ -9,12 +9,15 @@ import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.ingame.InventoryScreen;
+import net.minecraft.client.gui.screen.ingame.StatusEffectsScreen;
 import net.minecraft.client.network.OtherClientPlayerEntity;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.render.RenderLayer;
+import net.minecraft.client.texture.StatusEffectSpriteManager;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.entity.EntityPose;
 import net.minecraft.entity.EquipmentSlot;
+import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.ActionResult;
@@ -107,9 +110,17 @@ public class PlayerHudClient implements ClientModInitializer {
             fakeRenderPlayer.headYaw = 0.0F;
             fakeRenderPlayer.setPitch(0.0F);
             fakeRenderPlayer.prevBodyYaw = 0.0F;
-            fakeRenderPlayer.prevHeadYaw = 0.0F;
+            fakeRenderPlayer.headYaw = 0.0F;
             fakeRenderPlayer.prevPitch = 0.0F;
-            fakeRenderPlayer.hurtTime = 0;
+            
+            // NOWOŚĆ: Synchronizowanie czasu trwania obrażeń (Hurt Time) z prawdziwego gracza na klona 3D
+            if (HudConfig.showHurtFlash) {
+                fakeRenderPlayer.hurtTime = target.hurtTime;
+                fakeRenderPlayer.maxHurtTime = target.maxHurtTime;
+            } else {
+                fakeRenderPlayer.hurtTime = 0;
+            }
+            
             fakeRenderPlayer.setPose(EntityPose.STANDING);
 
             Quaternionf rotation = new Quaternionf().rotationXYZ(0.0F, 3.1415927F, 3.1415927F);
@@ -224,7 +235,8 @@ public class PlayerHudClient implements ClientModInitializer {
             }
         }
 
-        // PRZEDMIOTY (MAIN HAND / OFF HAND) - NAPRAWIONE DLA MC 1.21.4
+        // PRZEDMIOTY (MAIN HAND / OFF HAND)
+        int itemStartX = currentX;
         if (HudConfig.showItems) {
             ItemStack mainHand = target.getMainHandStack();
             ItemStack offHand = target.getOffHandStack();
@@ -232,9 +244,38 @@ public class PlayerHudClient implements ClientModInitializer {
 
             if (!mainHand.isEmpty()) {
                 context.drawItem(mainHand, currentX, itemY);
+                currentX += 18;
             }
             if (!offHand.isEmpty()) {
-                context.drawItem(offHand, currentX + 18, itemY);
+                context.drawItem(offHand, currentX, itemY);
+                currentX += 18;
+            }
+            // Jeśli przynajmniej jeden przedmiot został narysowany, podbijamy wysokość logiki
+            if (!mainHand.isEmpty() || !offHand.isEmpty()) {
+                statsY += 22;
+            }
+        }
+
+        // NOWOŚĆ: 100% LEGALNE EFEKTY MIKSTUR (SAME IKONY, BEZ CZASU)
+        if (HudConfig.showEffects && !target.getStatusEffects().isEmpty()) {
+            StatusEffectSpriteManager spriteManager = client.getStatusEffectSpriteManager();
+            int effectX = itemStartX;
+            int effectY = statsY + 4;
+            int count = 0;
+
+            for (StatusEffectInstance effect : target.getStatusEffects()) {
+                // Wyświetlamy maksymalnie 5 efektów w jednym rzędzie, aby nie rozciągać HUDa
+                if (count > 0 && count % 5 == 0) {
+                    effectX = itemStartX;
+                    effectY += 14;
+                }
+
+                net.minecraft.client.texture.Sprite sprite = spriteManager.getSprite(effect.getEffectType());
+                // Rysowanie ikony potki o kompaktowych wymiarach 12x12 pikseli
+                context.drawSprite(effectX, effectY, 0, 12, 12, sprite);
+                
+                effectX += 14;
+                count++;
             }
         }
     }
