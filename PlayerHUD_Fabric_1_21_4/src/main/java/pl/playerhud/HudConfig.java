@@ -9,10 +9,10 @@ public class HudConfig {
     public static int hudY = 30;
     
     public static boolean showItems = true;       
-
-    // 3 tryby wyświetlania zdrowia: 0 = Ikony, 1 = Procenty, 2 = Liczby
     public static int hpDisplayMode = 0; 
-    
-    // NOWOŚĆ: 3 tryby wyświetlania pancerza: 0 = Ikony, 1 = Procenty, 2 = Liczby
     public static int armorDisplayMode = 0;
+
+    // NOWOŚĆ: Przełączniki dla efektów i błysku modelu 3D
+    public static boolean showEffects = true;
+    public static boolean showHurtFlash = true;
 }
