@@ -234,7 +234,6 @@ public class PlayerHudClient implements ClientModInitializer {
         }
 
         // PRZEDMIOTY (MAIN HAND / OFF HAND)
-        int itemStartX = currentX;
         if (HudConfig.showItems) {
             ItemStack mainHand = target.getMainHandStack();
             ItemStack offHand = target.getOffHandStack();
@@ -242,33 +241,31 @@ public class PlayerHudClient implements ClientModInitializer {
 
             if (!mainHand.isEmpty()) {
                 context.drawItem(mainHand, currentX, itemY);
-                currentX += 18;
             }
             if (!offHand.isEmpty()) {
-                context.drawItem(offHand, currentX, itemY);
-                currentX += 18;
+                context.drawItem(offHand, currentX + 18, itemY);
             }
             if (!mainHand.isEmpty() || !offHand.isEmpty()) {
                 statsY += 22;
             }
         }
 
-        // 100% LEGALNE EFEKTY MIKSTUR (SAME IKONY, BEZ CZASU) - NAPRAWIONE DLA 1.21.4
+        // LEGALNE EFEKTY MIKSTUR (WYRÓWNANE DO KRAWĘDZI SERC I ARMORA - MAX 5 NA RZĄD)
         if (HudConfig.showEffects && !target.getStatusEffects().isEmpty()) {
             StatusEffectSpriteManager spriteManager = client.getStatusEffectSpriteManager();
-            int effectX = itemStartX;
+            int effectX = currentX; // Początek idealnie wyrównany z serduszkami i pancerzem
             int effectY = statsY + 4;
             int count = 0;
 
             for (StatusEffectInstance effect : target.getStatusEffects()) {
+                // Gdy narysujemy 5 efektów, przechodzimy do nowej linii i resetujemy X do krawędzi
                 if (count > 0 && count % 5 == 0) {
-                    effectX = itemStartX;
+                    effectX = currentX;
                     effectY += 14;
                 }
 
                 net.minecraft.client.texture.Sprite sprite = spriteManager.getSprite(effect.getEffectType());
                 if (sprite != null) {
-                    // Wykorzystanie bezpiecznej metody drawTexture kompatybilnej ze strukturą duszka w 1.21.4
                     context.drawTexture(RenderLayer::getGuiTextured, sprite.getAtlasId(), effectX, effectY, 0, 0, 12, 12, 12, 12);
                 }
                 
@@ -278,4 +275,3 @@ public class PlayerHudClient implements ClientModInitializer {
         }
     }
 }
-
