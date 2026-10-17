@@ -1,5 +1,5 @@
 plugins {
-    id 'fabric-loom' version '1.9.3'
+    id 'fabric-loom' version '1.9.2'
     id 'maven-publish'
 }
 
@@ -10,8 +10,17 @@ base {
     archivesName = project.archives_base_name
 }
 
+// OSTATECZNA POPRAWKA DLA 1.21.11: Wymuszenie poprawnej wersji unpick w konfiguracji zależności
+configurations.all {
+    resolutionStrategy.eachDependency { DependencyResolveDetails details ->
+        if (details.requested.group == 'net.fabricmc' && details.requested.name == 'unpick') {
+            details.useVersion '2.1.2'
+        }
+    }
+}
+
 repositories {
-    maven { url = "https://fabricmc.net" }
+    maven { url = "https://maven.fabricmc.net/" }
     mavenCentral()
 }
 
