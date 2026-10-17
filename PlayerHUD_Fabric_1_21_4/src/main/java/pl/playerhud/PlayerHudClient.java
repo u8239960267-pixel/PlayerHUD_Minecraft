@@ -233,37 +233,45 @@ public class PlayerHudClient implements ClientModInitializer {
             }
         }
 
-        // NOWOŚĆ: EFEKTY MIKSTUR NAD ITEMAMI (MAX 5 NA RZĄD, WYRÓWNANE Z SERCAMI)
+        // WYŚWIETLANIE SAMYCH CZYSZCZONYCH IKON EFEKTÓW MIKSTUR (IDEALNIE POD SERCAMI)
         if (HudConfig.showEffects && !target.getStatusEffects().isEmpty()) {
             StatusEffectSpriteManager spriteManager = client.getStatusEffectSpriteManager();
             int effectX = currentX; 
-            int effectY = statsY + 2;
+            int effectY = statsY + 4;
             int count = 0;
 
             for (StatusEffectInstance effect : target.getStatusEffects()) {
                 if (count > 0 && count % 5 == 0) {
                     effectX = currentX;
-                    effectY += 14;
+                    effectY += 20; // Odstęp dla nowego rzędu ikon
                 }
 
                 net.minecraft.client.texture.Sprite sprite = spriteManager.getSprite(effect.getEffectType());
                 if (sprite != null) {
-                    // Wykorzystanie drawGuiTexture (zamiast drawTexture), aby Minecraft sam prawidłowo pobrał teksturę z rejestru GUI
-                    context.drawGuiTexture(RenderLayer::getGuiTextured, sprite.getAtlasId(), effectX, effectY, 12, 12);
+                    // Prawidłowe rysowanie samego duszka ikony z atlasu bez zbędnej ramki
+                    context.drawSprite(effectX, effectY, 0, 18, 18, sprite);
+
+                    // Jeśli potka ma wyższy poziom niż 1 (np. Siła II), rysujemy małą cyfrę poziomu w rogu ikony
+                    int amplifier = effect.getAmplifier();
+                    if (amplifier > 0) {
+                        String levelText = String.valueOf(amplifier + 1);
+                        // Rysowanie małej cyfry w prawym dolnym rogu ikony (X + 12, Y + 10)
+                        context.drawText(client.textRenderer, levelText, effectX + 12, effectY + 10, 0xFFFFFF, true);
+                    }
                 }
                 
-                effectX += 14;
+                effectX += 22; // Szerokość ikony (18px) + mały margines (4px)
                 count++;
             }
-            // Zwiększamy statsY po narysowaniu rzędów efektów, żeby przedmioty zjechały niżej
-            statsY += (((count - 1) / 5) + 1) * 14;
+            // Obliczamy ile miejsca zajęły ikony i przesuwamy statsY w dół dla przedmiotów
+            statsY += (((count - 1) / 5) + 1) * 20;
         }
 
-        // PRZEDMIOTY (TERAZ POD EFEKTAMI MIKSTUR)
+        // PRZEDMIOTY (NA SAMYM DOLE, POD IKONAMI EFEKTÓW)
         if (HudConfig.showItems) {
             ItemStack mainHand = target.getMainHandStack();
             ItemStack offHand = target.getOffHandStack();
-            int itemY = statsY + 4;
+            int itemY = statsY + 6;
 
             if (!mainHand.isEmpty()) {
                 context.drawItem(mainHand, currentX, itemY);
