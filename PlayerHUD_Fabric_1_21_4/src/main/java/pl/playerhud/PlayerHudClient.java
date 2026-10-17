@@ -253,7 +253,7 @@ public class PlayerHudClient implements ClientModInitializer {
             }
         }
 
-        // 100% LEGALNE EFEKTY MIKSTUR (SAME IKONY, BEZ CZASU)
+        // 100% LEGALNE EFEKTY MIKSTUR (SAME IKONY, BEZ CZASU) - NAPRAWIONE DLA 1.21.4
         if (HudConfig.showEffects && !target.getStatusEffects().isEmpty()) {
             StatusEffectSpriteManager spriteManager = client.getStatusEffectSpriteManager();
             int effectX = itemStartX;
@@ -267,7 +267,10 @@ public class PlayerHudClient implements ClientModInitializer {
                 }
 
                 net.minecraft.client.texture.Sprite sprite = spriteManager.getSprite(effect.getEffectType());
-                context.drawSprite(effectX, effectY, 0, 12, 12, sprite);
+                if (sprite != null) {
+                    // Wykorzystanie bezpiecznej metody drawTexture kompatybilnej ze strukturą duszka w 1.21.4
+                    context.drawTexture(RenderLayer::getGuiTextured, sprite.getAtlasId(), effectX, effectY, 0, 0, 12, 12, 12, 12);
+                }
                 
                 effectX += 14;
                 count++;
@@ -275,3 +278,4 @@ public class PlayerHudClient implements ClientModInitializer {
         }
     }
 }
+
