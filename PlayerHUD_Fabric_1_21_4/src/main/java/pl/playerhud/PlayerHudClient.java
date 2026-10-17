@@ -12,11 +12,9 @@ import net.minecraft.client.gui.screen.ingame.InventoryScreen;
 import net.minecraft.client.network.OtherClientPlayerEntity;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.render.RenderLayer;
-import net.minecraft.client.texture.StatusEffectSpriteManager;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.entity.EntityPose;
 import net.minecraft.entity.EquipmentSlot;
-import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.ActionResult;
@@ -109,7 +107,7 @@ public class PlayerHudClient implements ClientModInitializer {
             fakeRenderPlayer.headYaw = 0.0F;
             fakeRenderPlayer.setPitch(0.0F);
             fakeRenderPlayer.prevBodyYaw = 0.0F;
-            fakeRenderPlayer.prevHeadYaw = 0.0F;
+            fakeRenderPlayer.headYaw = 0.0F;
             fakeRenderPlayer.prevPitch = 0.0F;
             
             if (HudConfig.showHurtFlash) {
@@ -233,43 +231,7 @@ public class PlayerHudClient implements ClientModInitializer {
             }
         }
 
-        // CZYTANIE STATUSÓW Z LINIJEK KODU STANU POSTACI
-        if (HudConfig.showEffects) {
-            int effectX = currentX;
-            int effectY = statsY + 2;
-            boolean detectedAny = false;
-
-            // Sprawdzamy stan 3 sekundy po uderzeniu wroga
-            if (System.currentTimeMillis() - lastAttackTime < 3000) { 
-                
-                // 1. LINIJKA KODU: Czy postać wroga ma aktywną flagę sprintu modyfikowaną przez prędkość bazową
-                // (W Minecraft ruch z prędkością Speed modyfikuje flagę poruszania się klienta)
-                if (target.isSprinting() || target.sidewaysSpeed > 0.0f || target.forwardSpeed > 0.0f) {
-                    // Dodatkowy warunek sprawdzający, czy gracz porusza się szybciej niż standardowo w locie/biegu
-                    if (target.getVelocity().lengthSquared() > 0.05) {
-                        Identifier speedId = Identifier.ofVanilla("hud/effect/speed");
-                        context.drawGuiTexture(RenderLayer::getGuiTextured, speedId, effectX, effectY, 18, 18);
-                        effectX += 22;
-                        detectedAny = true;
-                    }
-                }
-
-                // 2. LINIJKA KODU: Sprawdzanie flagi ataku i modyfikatora obrażeń krytycznych
-                // Nasłuchujemy, czy zaatakowany przeciwnik wykonuje zamach ręką i wywołuje odrzucenie na graczu
-                if (target.handSwung && client.player.hurtTime > 0) {
-                    Identifier strengthId = Identifier.ofVanilla("hud/effect/strength");
-                    context.drawGuiTexture(RenderLayer::getGuiTextured, strengthId, effectX, effectY, 18, 18);
-                    effectX += 22;
-                    detectedAny = true;
-                }
-            }
-
-            if (detectedAny) {
-                statsY += 20;
-            }
-        }
-
-        // PRZEDMIOTY (NA SAMYM DOLE)
+        // PRZEDMIOTY (NA SAMYM DOLE, POD INDYWIDUALNYMI STYLAMI STATYSTYK)
         if (HudConfig.showItems) {
             ItemStack mainHand = target.getMainHandStack();
             ItemStack offHand = target.getOffHandStack();
