@@ -233,7 +233,33 @@ public class PlayerHudClient implements ClientModInitializer {
             }
         }
 
-        // PRZEDMIOTY (MAIN HAND / OFF HAND)
+        // NOWOŚĆ: EFEKTY MIKSTUR NAD ITEMAMI (MAX 5 NA RZĄD, WYRÓWNANE Z SERCAMI)
+        if (HudConfig.showEffects && !target.getStatusEffects().isEmpty()) {
+            StatusEffectSpriteManager spriteManager = client.getStatusEffectSpriteManager();
+            int effectX = currentX; 
+            int effectY = statsY + 2;
+            int count = 0;
+
+            for (StatusEffectInstance effect : target.getStatusEffects()) {
+                if (count > 0 && count % 5 == 0) {
+                    effectX = currentX;
+                    effectY += 14;
+                }
+
+                net.minecraft.client.texture.Sprite sprite = spriteManager.getSprite(effect.getEffectType());
+                if (sprite != null) {
+                    // Wykorzystanie drawGuiTexture (zamiast drawTexture), aby Minecraft sam prawidłowo pobrał teksturę z rejestru GUI
+                    context.drawGuiTexture(RenderLayer::getGuiTextured, sprite.getAtlasId(), effectX, effectY, 12, 12);
+                }
+                
+                effectX += 14;
+                count++;
+            }
+            // Zwiększamy statsY po narysowaniu rzędów efektów, żeby przedmioty zjechały niżej
+            statsY += (((count - 1) / 5) + 1) * 14;
+        }
+
+        // PRZEDMIOTY (TERAZ POD EFEKTAMI MIKSTUR)
         if (HudConfig.showItems) {
             ItemStack mainHand = target.getMainHandStack();
             ItemStack offHand = target.getOffHandStack();
@@ -244,33 +270,6 @@ public class PlayerHudClient implements ClientModInitializer {
             }
             if (!offHand.isEmpty()) {
                 context.drawItem(offHand, currentX + 18, itemY);
-            }
-            if (!mainHand.isEmpty() || !offHand.isEmpty()) {
-                statsY += 22;
-            }
-        }
-
-        // LEGALNE EFEKTY MIKSTUR (WYRÓWNANE DO KRAWĘDZI SERC I ARMORA - MAX 5 NA RZĄD)
-        if (HudConfig.showEffects && !target.getStatusEffects().isEmpty()) {
-            StatusEffectSpriteManager spriteManager = client.getStatusEffectSpriteManager();
-            int effectX = currentX; // Początek idealnie wyrównany z serduszkami i pancerzem
-            int effectY = statsY + 4;
-            int count = 0;
-
-            for (StatusEffectInstance effect : target.getStatusEffects()) {
-                // Gdy narysujemy 5 efektów, przechodzimy do nowej linii i resetujemy X do krawędzi
-                if (count > 0 && count % 5 == 0) {
-                    effectX = currentX;
-                    effectY += 14;
-                }
-
-                net.minecraft.client.texture.Sprite sprite = spriteManager.getSprite(effect.getEffectType());
-                if (sprite != null) {
-                    context.drawTexture(RenderLayer::getGuiTextured, sprite.getAtlasId(), effectX, effectY, 0, 0, 12, 12, 12, 12);
-                }
-                
-                effectX += 14;
-                count++;
             }
         }
     }
