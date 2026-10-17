@@ -10,17 +10,8 @@ base {
     archivesName = project.archives_base_name
 }
 
-// OSTATECZNA POPRAWKA DLA 1.21.11: Wymuszenie poprawnej wersji unpick w konfiguracji zależności
-configurations.all {
-    resolutionStrategy.eachDependency { DependencyResolveDetails details ->
-        if (details.requested.group == 'net.fabricmc' && details.requested.name == 'unpick') {
-            details.useVersion '2.1.2'
-        }
-    }
-}
-
 repositories {
-    maven { url = "https://maven.fabricmc.net/" }
+    maven { url = "https://fabricmc.net" }
     mavenCentral()
 }
 
