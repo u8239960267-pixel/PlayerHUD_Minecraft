@@ -245,10 +245,12 @@ public class PlayerHudClient implements ClientModInitializer {
                     effectY += 20; 
                 }
 
-                // POPRAWKA DLA 1.21.4: Pobieramy zarejestrowany identyfikator tekstury GUI dla danego efektu
-                Identifier textureId = effect.getEffectType().value().getBackgroundSpriteId();
-                if (textureId != null) {
-                    // Rysujemy czystą ikonę (duszka) za pomocą wbudowanej metody drawGuiTexture
+                // POPRAWKA DLA 1.21.4: Dynamiczne wyciąganie identyfikatora duszka z klucza tłumaczenia (np. effect.minecraft.strength -> strength)
+                String[] keyParts = effect.getEffectType().value().getTranslationKey().split("\\.");
+                if (keyParts.length >= 3) {
+                    Identifier textureId = Identifier.ofVanilla("hud/effect/" + keyParts[2]);
+                    
+                    // Rysujemy ikonę bez tła ramki za pomocą natywnego drawGuiTexture
                     context.drawGuiTexture(RenderLayer::getGuiTextured, textureId, effectX, effectY, 18, 18);
 
                     // Dodawanie małej cyfry poziomu w prawym dolnym rogu ikony
