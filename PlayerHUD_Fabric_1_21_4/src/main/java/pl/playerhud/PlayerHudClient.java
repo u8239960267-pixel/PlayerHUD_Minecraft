@@ -233,7 +233,7 @@ public class PlayerHudClient implements ClientModInitializer {
             }
         }
 
-        // CZYSZCZONE IKONY EFEKTÓW MIKSTUR (IDEALNIE POD SERCAMI, MAX 5 NA RZĄD)
+        // OSTATECZNA POPRAWKA: IKONY MIKSTUR WYCIĄGANE BEZPOŚREDNIO Z ATLASU (MAX 5 NA RZĄD)
         if (HudConfig.showEffects && !target.getStatusEffects().isEmpty()) {
             int effectX = currentX; 
             int effectY = statsY + 2;
@@ -245,13 +245,12 @@ public class PlayerHudClient implements ClientModInitializer {
                     effectY += 20; 
                 }
 
-                // POPRAWKA DLA 1.21.4: Dynamiczne wyciąganie identyfikatora duszka z klucza tłumaczenia (np. effect.minecraft.strength -> strength)
-                String[] keyParts = effect.getEffectType().value().getTranslationKey().split("\\.");
-                if (keyParts.length >= 3) {
-                    Identifier textureId = Identifier.ofVanilla("hud/effect/" + keyParts[2]);
-                    
-                    // Rysujemy ikonę bez tła ramki za pomocą natywnego drawGuiTexture
-                    context.drawGuiTexture(RenderLayer::getGuiTextured, textureId, effectX, effectY, 18, 18);
+                // Pobieramy wpis z rejestru gry, który automatycznie kieruje do właściwego duszka w atlasie efektów
+                Identifier spriteId = net.minecraft.registry.Registries.STATUS_EFFECT.getId(effect.getEffectType().value());
+                if (spriteId != null) {
+                    // Budujemy poprawny identyfikator duszka GUI w atlasie (np. minecraft:strength)
+                    // Metoda drawGuiSprite pobiera czysty obraz bez tła slotu
+                    context.drawGuiTexture(RenderLayer::getGuiTextured, spriteId, effectX, effectY, 18, 18);
 
                     // Dodawanie małej cyfry poziomu w prawym dolnym rogu ikony
                     int amplifier = effect.getAmplifier();
