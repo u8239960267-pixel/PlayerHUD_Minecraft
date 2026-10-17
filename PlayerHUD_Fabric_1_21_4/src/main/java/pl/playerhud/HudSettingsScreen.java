@@ -32,7 +32,7 @@ public class HudSettingsScreen extends Screen {
         this.addDrawableChild(ButtonWidget.builder(Text.of("STATYSTYKI"), b -> switchTab(1)).dimensions(tabStartX + tabWidth + 10, 10, tabWidth, 20).build());
 
         int currentY = 45;
-        int spacing = 24;
+        int spacing = 22; // Delikatnie zmniejszony odstęp, aby 6 przycisków się zmieściło
 
         if (activeTab == 0) {
             this.addDrawableChild(ButtonWidget.builder(Text.of("Cały HUD: " + (HudConfig.isEnabled ? "§aWŁĄCZONY" : "§cWYŁĄCZONY")), button -> {
@@ -79,7 +79,6 @@ public class HudSettingsScreen extends Screen {
             
             currentY += spacing;
 
-            // Przycisk wyboru 1 z 3 trybów wyświetlania życia
             this.addDrawableChild(ButtonWidget.builder(Text.of(getHpButtonText()), button -> {
                 HudConfig.hpDisplayMode = (HudConfig.hpDisplayMode + 1) % 3;
                 button.setMessage(Text.of(getHpButtonText()));
@@ -87,10 +86,25 @@ public class HudSettingsScreen extends Screen {
             
             currentY += spacing;
 
-            // NOWOŚĆ: Przycisk wyboru 1 z 3 trybów wyświetlania pancerza
             this.addDrawableChild(ButtonWidget.builder(Text.of(getArmorButtonText()), button -> {
-                HudConfig.armorDisplayMode = (HudConfig.armorDisplayMode + 1) % 3; // Przełączanie 0 -> 1 -> 2 -> 0
+                HudConfig.armorDisplayMode = (HudConfig.armorDisplayMode + 1) % 3;
                 button.setMessage(Text.of(getArmorButtonText()));
+            }).dimensions(buttonX, currentY, buttonWidth, 20).build());
+
+            currentY += spacing;
+
+            // NOWOŚĆ: Przycisk efektów mikstur
+            this.addDrawableChild(ButtonWidget.builder(Text.of("Efekty mikstur: " + (HudConfig.showEffects ? "§aWŁĄCZONY" : "§cWYŁĄCZONY")), button -> {
+                HudConfig.showEffects = !HudConfig.showEffects;
+                button.setMessage(Text.of("Efekty mikstur: " + (HudConfig.showEffects ? "§aWŁĄCZONY" : "§cWYŁĄCZONY")));
+            }).dimensions(buttonX, currentY, buttonWidth, 20).build());
+
+            currentY += spacing;
+
+            // NOWOŚĆ: Przycisk czerwonego błysku
+            this.addDrawableChild(ButtonWidget.builder(Text.of("Błysk modelu po hicie: " + (HudConfig.showHurtFlash ? "§aWŁĄCZONY" : "§cWYŁĄCZONY")), button -> {
+                HudConfig.showHurtFlash = !HudConfig.showHurtFlash;
+                button.setMessage(Text.of("Błysk modelu po hicie: " + (HudConfig.showHurtFlash ? "§aWŁĄCZONY" : "§cWYŁĄCZONY")));
             }).dimensions(buttonX, currentY, buttonWidth, 20).build());
         }
     }
@@ -101,7 +115,6 @@ public class HudSettingsScreen extends Screen {
         return "Styl HP: §eHP: Liczby";
     }
 
-    // NOWOŚĆ: Generowanie nazwy przycisku pancerza
     private String getArmorButtonText() {
         if (HudConfig.armorDisplayMode == 0) return "Styl Armora: §eNormalne Ikony";
         if (HudConfig.armorDisplayMode == 1) return "Styl Armora: §eProcenty (%)";
@@ -118,7 +131,7 @@ public class HudSettingsScreen extends Screen {
         this.renderInGameBackground(context);
 
         int boxWidth = (int) (160 * HudConfig.hudScale);
-        int boxHeight = (int) (95 * HudConfig.hudScale);
+        int boxHeight = (int) (105 * HudConfig.hudScale); // Zwiększona wysokość podglądu dla nowych opcji
 
         context.fill(HudConfig.hudX, HudConfig.hudY, HudConfig.hudX + boxWidth, HudConfig.hudY + boxHeight, 0x66000000);
         context.drawText(this.textRenderer, "§e Złap i przesuń §f", HudConfig.hudX + 5, HudConfig.hudY + 5, 0xFFFFFF, false);
@@ -129,7 +142,7 @@ public class HudSettingsScreen extends Screen {
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         int boxWidth = (int) (160 * HudConfig.hudScale);
-        int boxHeight = (int) (95 * HudConfig.hudScale);
+        int boxHeight = (int) (105 * HudConfig.hudScale);
 
         if (button == 0 && mouseX >= HudConfig.hudX && mouseX <= HudConfig.hudX + boxWidth && mouseY >= HudConfig.hudY && mouseY <= HudConfig.hudY + boxHeight) {
             this.isDragging = true;
