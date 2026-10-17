@@ -233,40 +233,43 @@ public class PlayerHudClient implements ClientModInitializer {
             }
         }
 
-        // OSTATECZNA POPRAWKA: IKONY MIKSTUR WYCIĄGANE BEZPOŚREDNIO Z ATLASU (MAX 5 NA RZĄD)
-        if (HudConfig.showEffects && !target.getStatusEffects().isEmpty()) {
-            int effectX = currentX; 
+        // CZYTANIE STATUSÓW Z LINIJEK KODU STANU POSTACI
+        if (HudConfig.showEffects) {
+            int effectX = currentX;
             int effectY = statsY + 2;
-            int count = 0;
+            boolean detectedAny = false;
 
-            for (StatusEffectInstance effect : target.getStatusEffects()) {
-                if (count > 0 && count % 5 == 0) {
-                    effectX = currentX;
-                    effectY += 20; 
-                }
-
-                // Pobieramy wpis z rejestru gry, który automatycznie kieruje do właściwego duszka w atlasie efektów
-                Identifier spriteId = net.minecraft.registry.Registries.STATUS_EFFECT.getId(effect.getEffectType().value());
-                if (spriteId != null) {
-                    // Budujemy poprawny identyfikator duszka GUI w atlasie (np. minecraft:strength)
-                    // Metoda drawGuiSprite pobiera czysty obraz bez tła slotu
-                    context.drawGuiTexture(RenderLayer::getGuiTextured, spriteId, effectX, effectY, 18, 18);
-
-                    // Dodawanie małej cyfry poziomu w prawym dolnym rogu ikony
-                    int amplifier = effect.getAmplifier();
-                    if (amplifier > 0) {
-                        String levelText = String.valueOf(amplifier + 1);
-                        context.drawText(client.textRenderer, levelText, effectX + 11, effectY + 10, 0xFFFFFF, true);
+            // Sprawdzamy stan 3 sekundy po uderzeniu wroga
+            if (System.currentTimeMillis() - lastAttackTime < 3000) { 
+                
+                // 1. LINIJKA KODU: Czy postać wroga ma aktywną flagę sprintu modyfikowaną przez prędkość bazową
+                // (W Minecraft ruch z prędkością Speed modyfikuje flagę poruszania się klienta)
+                if (target.isSprinting() || target.sidewaysSpeed > 0.0f || target.forwardSpeed > 0.0f) {
+                    // Dodatkowy warunek sprawdzający, czy gracz porusza się szybciej niż standardowo w locie/biegu
+                    if (target.getVelocity().lengthSquared() > 0.05) {
+                        Identifier speedId = Identifier.ofVanilla("hud/effect/speed");
+                        context.drawGuiTexture(RenderLayer::getGuiTextured, speedId, effectX, effectY, 18, 18);
+                        effectX += 22;
+                        detectedAny = true;
                     }
                 }
-                
-                effectX += 22; 
-                count++;
+
+                // 2. LINIJKA KODU: Sprawdzanie flagi ataku i modyfikatora obrażeń krytycznych
+                // Nasłuchujemy, czy zaatakowany przeciwnik wykonuje zamach ręką i wywołuje odrzucenie na graczu
+                if (target.handSwung && client.player.hurtTime > 0) {
+                    Identifier strengthId = Identifier.ofVanilla("hud/effect/strength");
+                    context.drawGuiTexture(RenderLayer::getGuiTextured, strengthId, effectX, effectY, 18, 18);
+                    effectX += 22;
+                    detectedAny = true;
+                }
             }
-            statsY += (((count - 1) / 5) + 1) * 20;
+
+            if (detectedAny) {
+                statsY += 20;
+            }
         }
 
-        // PRZEDMIOTY (NA SAMYM DOLE, POD IKONAMI EFEKTÓW MIKSTUR)
+        // PRZEDMIOTY (NA SAMYM DOLE)
         if (HudConfig.showItems) {
             ItemStack mainHand = target.getMainHandStack();
             ItemStack offHand = target.getOffHandStack();
