@@ -1,5 +1,5 @@
 plugins {
-    id 'fabric-loom' version '1.9.2'
+    id 'fabric-loom' version '1.9.3'
     id 'maven-publish'
 }
 
@@ -8,11 +8,6 @@ group = project.maven_group
 
 base {
     archivesName = project.archives_base_name
-}
-
-// POPRAWKA DLA LOOM 1.9.2: Prawidłowe przypisanie wersji unpick
-loom {
-    unpickVersion.set("2.1.2")
 }
 
 repositories {
