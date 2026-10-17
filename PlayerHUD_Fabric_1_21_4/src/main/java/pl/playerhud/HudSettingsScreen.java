@@ -5,7 +5,6 @@ import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.SliderWidget;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.text.Text;
-import net.minecraft.client.render.RenderLayer;
 
 public class HudSettingsScreen extends Screen {
     private boolean isDragging = false;
