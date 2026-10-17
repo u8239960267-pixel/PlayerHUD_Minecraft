@@ -10,13 +10,13 @@ base {
     archivesName = project.archives_base_name
 }
 
-// WYMAGANE DLA 1.21.11: Ręczne wymuszenie stabilnej i obsługiwanej wersji unpick
+// POPRAWKA DLA LOOM 1.9.2: Prawidłowe przypisanie wersji unpick
 loom {
-    customUnpickVersion = "2.1.2"
+    unpickVersion.set("2.1.2")
 }
 
 repositories {
-    maven { url = "https://maven.fabricmc.net/" }
+    maven { url = "https://fabricmc.net" }
     mavenCentral()
 }
 
